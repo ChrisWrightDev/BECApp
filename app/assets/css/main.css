@@ -2,3 +2,51 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobile optimizations */
+@layer base {
+  /* Ensure touch targets are at least 44x44px */
+  button, a, input[type="checkbox"], input[type="radio"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Improve touch scrolling */
+  * {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  
+  /* Better text rendering on mobile */
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  
+  /* Prevent text size adjustment on iOS */
+  input, select, textarea {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  @media (min-width: 640px) {
+    input, select, textarea {
+      font-size: inherit;
+    }
+  }
+}
+
+/* Small button exceptions for mobile */
+@layer utilities {
+  .btn-xs {
+    min-height: 32px;
+    min-width: 32px;
+  }
+  
+  @media (min-width: 640px) {
+    .btn-xs {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+}
+

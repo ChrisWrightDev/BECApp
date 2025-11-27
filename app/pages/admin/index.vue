@@ -1,71 +1,71 @@
 <template>
   <div>
-    <div class="mb-8">
-      <h1 class="text-4xl font-bold mb-2">Admin Dashboard</h1>
-      <p class="text-base-content/70">System administration and management</p>
+    <div class="mb-4 sm:mb-8">
+      <h1 class="text-2xl sm:text-4xl font-bold mb-1 sm:mb-2">Admin Dashboard</h1>
+      <p class="text-sm sm:text-base text-base-content/70">System administration and management</p>
     </div>
 
     <!-- Quick Stats -->
-    <div v-if="!loading && systemStats" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-      <div class="stat bg-base-100 shadow rounded-box">
-        <div class="stat-title">Total Projects</div>
-        <div class="stat-value text-primary text-2xl">{{ systemStats.projects || 0 }}</div>
+    <div v-if="!loading && systemStats" class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-8">
+      <div class="stat bg-base-100 shadow rounded-box p-3 sm:p-4">
+        <div class="stat-title text-xs sm:text-sm">Total Projects</div>
+        <div class="stat-value text-primary text-xl sm:text-2xl">{{ systemStats.projects || 0 }}</div>
       </div>
-      <div class="stat bg-base-100 shadow rounded-box">
-        <div class="stat-title">Total Tasks</div>
-        <div class="stat-value text-secondary text-2xl">{{ systemStats.tasks || 0 }}</div>
+      <div class="stat bg-base-100 shadow rounded-box p-3 sm:p-4">
+        <div class="stat-title text-xs sm:text-sm">Total Tasks</div>
+        <div class="stat-value text-secondary text-xl sm:text-2xl">{{ systemStats.tasks || 0 }}</div>
       </div>
-      <div class="stat bg-base-100 shadow rounded-box">
-        <div class="stat-title">Templates</div>
-        <div class="stat-value text-accent text-2xl">{{ systemStats.templates || 0 }}</div>
+      <div class="stat bg-base-100 shadow rounded-box p-3 sm:p-4">
+        <div class="stat-title text-xs sm:text-sm">Templates</div>
+        <div class="stat-value text-accent text-xl sm:text-2xl">{{ systemStats.templates || 0 }}</div>
       </div>
-      <div class="stat bg-base-100 shadow rounded-box">
-        <div class="stat-title">Users</div>
-        <div class="stat-value text-info text-2xl">{{ systemStats.users || 0 }}</div>
+      <div class="stat bg-base-100 shadow rounded-box p-3 sm:p-4">
+        <div class="stat-title text-xs sm:text-sm">Users</div>
+        <div class="stat-value text-info text-xl sm:text-2xl">{{ systemStats.users || 0 }}</div>
       </div>
     </div>
 
     <!-- System Controls -->
-    <div class="card bg-base-100 shadow-xl mb-6">
-      <div class="card-body">
-        <h2 class="card-title mb-4">
-          <Icon name="mdi:cog" class="w-6 h-6" />
+    <div class="card bg-base-100 shadow-xl mb-4 sm:mb-6">
+      <div class="card-body p-4 sm:p-6">
+        <h2 class="card-title mb-3 sm:mb-4 text-base sm:text-lg">
+          <Icon name="mdi:cog" class="w-5 h-5 sm:w-6 sm:h-6" />
           System Controls
         </h2>
         <div class="divider"></div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="flex items-center justify-between p-4 bg-base-200 rounded-lg">
-            <div>
-              <h3 class="font-semibold">Generate Daily Tasks</h3>
-              <p class="text-sm text-base-content/70">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 bg-base-200 rounded-lg">
+            <div class="flex-1">
+              <h3 class="font-semibold text-sm sm:text-base">Generate Daily Tasks</h3>
+              <p class="text-xs sm:text-sm text-base-content/70 mt-1">
                 Manually trigger task generation for all active projects
               </p>
             </div>
             <button
               @click="handleGenerateTasks"
-              class="btn btn-primary"
+              class="btn btn-primary btn-sm sm:btn-md w-full sm:w-auto flex-shrink-0"
               :disabled="generatingTasks"
             >
-              <span v-if="generatingTasks" class="loading loading-spinner loading-sm"></span>
-              <Icon v-else name="mdi:refresh" class="w-5 h-5" />
+              <span v-if="generatingTasks" class="loading loading-spinner loading-xs sm:loading-sm"></span>
+              <Icon v-else name="mdi:refresh" class="w-4 h-4 sm:w-5 sm:h-5" />
               Generate
             </button>
           </div>
 
-          <div class="flex items-center justify-between p-4 bg-base-200 rounded-lg">
-            <div>
-              <h3 class="font-semibold">Check Phase Advancement</h3>
-              <p class="text-sm text-base-content/70">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 bg-base-200 rounded-lg">
+            <div class="flex-1">
+              <h3 class="font-semibold text-sm sm:text-base">Check Phase Advancement</h3>
+              <p class="text-xs sm:text-sm text-base-content/70 mt-1">
                 Manually check and advance phases based on duration
               </p>
             </div>
             <button
               @click="handleAdvancePhases"
-              class="btn btn-secondary"
+              class="btn btn-secondary btn-sm sm:btn-md w-full sm:w-auto flex-shrink-0"
               :disabled="advancingPhases"
             >
-              <span v-if="advancingPhases" class="loading loading-spinner loading-sm"></span>
-              <Icon v-else name="mdi:arrow-right-circle" class="w-5 h-5" />
+              <span v-if="advancingPhases" class="loading loading-spinner loading-xs sm:loading-sm"></span>
+              <Icon v-else name="mdi:arrow-right-circle" class="w-4 h-4 sm:w-5 sm:h-5" />
               Check
             </button>
           </div>
@@ -88,34 +88,34 @@
     </div>
 
     <!-- Admin Actions -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
       <NuxtLink to="/admin/templates" class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
-        <div class="card-body">
-          <h2 class="card-title">
-            <Icon name="mdi:file-document-outline" class="w-6 h-6" />
+        <div class="card-body p-4 sm:p-6">
+          <h2 class="card-title text-base sm:text-lg">
+            <Icon name="mdi:file-document-outline" class="w-5 h-5 sm:w-6 sm:h-6" />
             Templates
           </h2>
-          <p>Manage project templates, phases, and tasks</p>
+          <p class="text-sm sm:text-base">Manage project templates, phases, and tasks</p>
         </div>
       </NuxtLink>
 
       <NuxtLink to="/admin/users" class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
-        <div class="card-body">
-          <h2 class="card-title">
-            <Icon name="mdi:account-group" class="w-6 h-6" />
+        <div class="card-body p-4 sm:p-6">
+          <h2 class="card-title text-base sm:text-lg">
+            <Icon name="mdi:account-group" class="w-5 h-5 sm:w-6 sm:h-6" />
             Users
           </h2>
-          <p>Manage users and permissions</p>
+          <p class="text-sm sm:text-base">Manage users and permissions</p>
         </div>
       </NuxtLink>
 
       <NuxtLink to="/admin/analytics" class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
-        <div class="card-body">
-          <h2 class="card-title">
-            <Icon name="mdi:chart-line" class="w-6 h-6" />
+        <div class="card-body p-4 sm:p-6">
+          <h2 class="card-title text-base sm:text-lg">
+            <Icon name="mdi:chart-line" class="w-5 h-5 sm:w-6 sm:h-6" />
             Analytics
           </h2>
-          <p>View system analytics and metrics</p>
+          <p class="text-sm sm:text-base">View system analytics and metrics</p>
         </div>
       </NuxtLink>
     </div>

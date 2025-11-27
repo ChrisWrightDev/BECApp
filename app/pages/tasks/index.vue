@@ -1,53 +1,56 @@
 <template>
   <div>
-    <div class="mb-8 flex justify-between items-center">
-      <div>
-        <h1 class="text-4xl font-bold mb-2">Tasks</h1>
-        <p class="text-base-content/70">Manage your daily tasks</p>
+    <div class="mb-4 sm:mb-8">
+      <div class="mb-4 sm:mb-6">
+        <h1 class="text-2xl sm:text-4xl font-bold mb-1 sm:mb-2">Tasks</h1>
+        <p class="text-sm sm:text-base text-base-content/70">Manage your daily tasks</p>
       </div>
-      <div class="flex gap-2">
+      <div class="flex flex-col sm:flex-row gap-2">
         <input
           v-model="selectedDate"
           type="date"
-          class="input input-bordered"
+          class="input input-bordered w-full sm:w-auto text-sm sm:text-base"
           @change="handleDateChange"
         />
-        <button
-          @click="showFilters = !showFilters"
-          class="btn btn-outline"
-          :class="{ 'btn-active': showFilters }"
-        >
-          <Icon name="mdi:filter" class="w-5 h-5" />
-          Filters
-        </button>
-        <NuxtLink to="/tasks/calendar" class="btn btn-outline">
-          <Icon name="mdi:calendar" class="w-5 h-5" />
-          Calendar View
-        </NuxtLink>
-        <button
-          v-if="isAdmin()"
-          @click="generateDailyTasksHandler"
-          class="btn btn-primary"
-          :disabled="generating"
-        >
-          <Icon name="mdi:refresh" class="w-5 h-5" />
-          <span v-if="generating" class="loading loading-spinner loading-sm"></span>
-          Generate Tasks
-        </button>
+        <div class="flex gap-2 flex-wrap">
+          <button
+            @click="showFilters = !showFilters"
+            class="btn btn-outline btn-sm sm:btn-md flex-1 sm:flex-none"
+            :class="{ 'btn-active': showFilters }"
+          >
+            <Icon name="mdi:filter" class="w-4 h-4 sm:w-5 sm:h-5" />
+            <span class="hidden sm:inline">Filters</span>
+          </button>
+          <NuxtLink to="/tasks/calendar" class="btn btn-outline btn-sm sm:btn-md flex-1 sm:flex-none">
+            <Icon name="mdi:calendar" class="w-4 h-4 sm:w-5 sm:h-5" />
+            <span class="hidden sm:inline">Calendar</span>
+          </NuxtLink>
+          <button
+            v-if="isAdmin()"
+            @click="generateDailyTasksHandler"
+            class="btn btn-primary btn-sm sm:btn-md flex-1 sm:flex-none"
+            :disabled="generating"
+          >
+            <Icon name="mdi:refresh" class="w-4 h-4 sm:w-5 sm:h-5" />
+            <span v-if="generating" class="loading loading-spinner loading-xs sm:loading-sm"></span>
+            <span class="hidden sm:inline">Generate Tasks</span>
+            <span class="sm:hidden">Generate</span>
+          </button>
+        </div>
       </div>
     </div>
 
     <!-- Filters Panel -->
-    <div v-if="showFilters" class="card bg-base-100 shadow-xl mb-6">
-      <div class="card-body">
-        <div class="flex flex-wrap gap-4">
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text">Status</span>
+    <div v-if="showFilters" class="card bg-base-100 shadow-xl mb-4 sm:mb-6">
+      <div class="card-body p-4 sm:p-6">
+        <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <div class="form-control w-full sm:w-auto sm:min-w-[150px]">
+            <label class="label py-1 sm:py-2">
+              <span class="label-text text-sm sm:text-base">Status</span>
             </label>
             <select
               v-model="filters.status"
-              class="select select-bordered"
+              class="select select-bordered w-full text-sm sm:text-base"
               @change="applyFilters"
             >
               <option :value="null">All Statuses</option>
@@ -59,13 +62,13 @@
             </select>
           </div>
 
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text">Time Window</span>
+          <div class="form-control w-full sm:w-auto sm:min-w-[150px]">
+            <label class="label py-1 sm:py-2">
+              <span class="label-text text-sm sm:text-base">Time Window</span>
             </label>
             <select
               v-model="filters.timeWindow"
-              class="select select-bordered"
+              class="select select-bordered w-full text-sm sm:text-base"
               @change="applyFilters"
             >
               <option :value="null">All Times</option>
@@ -76,8 +79,8 @@
             </select>
           </div>
 
-          <div class="form-control flex items-end">
-            <button @click="clearFilters" class="btn btn-ghost">
+          <div class="form-control flex items-end w-full sm:w-auto">
+            <button @click="clearFilters" class="btn btn-ghost btn-sm sm:btn-md w-full sm:w-auto">
               Clear Filters
             </button>
           </div>
@@ -97,79 +100,81 @@
     </div>
 
     <!-- Tasks List -->
-    <div v-else-if="displayTasks.length > 0" class="space-y-6">
+    <div v-else-if="displayTasks.length > 0" class="space-y-4 sm:space-y-6">
       <!-- Group by Time Window -->
       <div
         v-for="(timeWindow, windowName) in groupedTasks"
         :key="windowName"
         class="card bg-base-100 shadow-xl"
       >
-        <div class="card-body">
-          <h2 class="card-title capitalize mb-4">
-            <Icon :name="getTimeWindowIcon(windowName)" class="w-5 h-5" />
-            {{ windowName }} Tasks
-            <span class="badge badge-primary">{{ timeWindow.length }}</span>
+        <div class="card-body p-4 sm:p-6">
+          <h2 class="card-title capitalize mb-3 sm:mb-4 text-lg sm:text-xl">
+            <Icon :name="getTimeWindowIcon(windowName)" class="w-4 h-4 sm:w-5 sm:h-5" />
+            <span class="hidden sm:inline">{{ windowName }} Tasks</span>
+            <span class="sm:hidden">{{ windowName }}</span>
+            <span class="badge badge-primary badge-sm sm:badge-md">{{ timeWindow.length }}</span>
           </h2>
           <div class="divider"></div>
-          <div class="space-y-3">
+          <div class="space-y-2 sm:space-y-3">
             <div
               v-for="task in timeWindow"
               :key="task.id"
-              class="flex items-center justify-between p-4 bg-base-200 rounded-lg hover:bg-base-300 transition-colors"
+              class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 bg-base-200 rounded-lg hover:bg-base-300 transition-colors"
             >
-              <div class="flex-1">
-                <div class="flex items-center gap-3">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-start gap-2 sm:gap-3">
                   <input
                     type="checkbox"
                     :checked="task.status === 'completed'"
                     @change="handleStatusChange(task, $event.target.checked)"
-                    class="checkbox checkbox-primary"
+                    class="checkbox checkbox-primary checkbox-sm sm:checkbox-md mt-1 flex-shrink-0"
                   />
-                  <div>
+                  <div class="flex-1 min-w-0">
                     <div
-                      class="font-semibold"
+                      class="font-semibold text-sm sm:text-base break-words"
                       :class="{
                         'line-through opacity-60': task.status === 'completed'
                       }"
                     >
                       {{ task.title }}
                     </div>
-                    <div class="text-sm text-base-content/70 mt-1">
-                      <span class="badge badge-ghost badge-sm">
+                    <div class="text-xs sm:text-sm text-base-content/70 mt-1 flex flex-wrap gap-1 sm:gap-2">
+                      <span class="badge badge-ghost badge-xs sm:badge-sm">
                         {{ task.project_name }}
                       </span>
-                      <span v-if="task.tank_name" class="ml-2">
-                        <Icon name="mdi:water" class="w-4 h-4 inline" />
-                        <span class="badge badge-info badge-sm">{{ task.tank_name }}</span>
+                      <span v-if="task.tank_name" class="badge badge-info badge-xs sm:badge-sm">
+                        <Icon name="mdi:water" class="w-3 h-3 sm:w-4 sm:h-4 inline" />
+                        {{ task.tank_name }}
                       </span>
-                      <span v-if="task.scheduled_time" class="ml-2">
-                        <Icon name="mdi:clock-outline" class="w-4 h-4 inline" />
+                      <span v-if="task.scheduled_time" class="badge badge-ghost badge-xs sm:badge-sm">
+                        <Icon name="mdi:clock-outline" class="w-3 h-3 sm:w-4 sm:h-4 inline" />
                         {{ formatTime(task.scheduled_time) }}
                       </span>
                     </div>
-                    <div v-if="task.description" class="text-sm text-base-content/60 mt-1">
+                    <div v-if="task.description" class="text-xs sm:text-sm text-base-content/60 mt-1 break-words">
                       {{ task.description }}
                     </div>
                   </div>
                 </div>
               </div>
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 sm:flex-shrink-0">
                 <button
                   v-if="task.project_has_phases && templateHasMultiplePhases(task.project_template_id)"
                   @click="advanceProjectPhase(task)"
-                  class="btn btn-primary btn-sm"
+                  class="btn btn-primary btn-xs sm:btn-sm flex-1 sm:flex-none"
                   :disabled="advancingPhase === task.project_id"
                   :title="'Advance to next phase'"
                 >
-                  <Icon name="mdi:arrow-right" class="w-4 h-4" />
-                  <span v-if="advancingPhase !== task.project_id">Next Phase</span>
+                  <Icon name="mdi:arrow-right" class="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span v-if="advancingPhase !== task.project_id" class="hidden sm:inline">Next Phase</span>
                   <span v-else class="loading loading-spinner loading-xs"></span>
                 </button>
                 <button
                   @click="openTaskModal(task)"
-                  class="btn btn-ghost btn-sm btn-circle"
+                  class="btn btn-ghost btn-xs sm:btn-sm btn-circle"
+                  :title="'View details'"
                 >
-                  <Icon name="mdi:information-outline" class="w-5 h-5" />
+                  <Icon name="mdi:information-outline" class="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
             </div>
@@ -179,64 +184,65 @@
 
       <!-- Tasks without time window -->
       <div v-if="ungroupedTasks.length > 0" class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-          <h2 class="card-title mb-4">
+        <div class="card-body p-4 sm:p-6">
+          <h2 class="card-title mb-3 sm:mb-4 text-lg sm:text-xl">
             Other Tasks
-            <span class="badge badge-primary">{{ ungroupedTasks.length }}</span>
+            <span class="badge badge-primary badge-sm sm:badge-md">{{ ungroupedTasks.length }}</span>
           </h2>
           <div class="divider"></div>
-          <div class="space-y-3">
+          <div class="space-y-2 sm:space-y-3">
             <div
               v-for="task in ungroupedTasks"
               :key="task.id"
-              class="flex items-center justify-between p-4 bg-base-200 rounded-lg hover:bg-base-300 transition-colors"
+              class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 bg-base-200 rounded-lg hover:bg-base-300 transition-colors"
             >
-              <div class="flex-1">
-                <div class="flex items-center gap-3">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-start gap-2 sm:gap-3">
                   <input
                     type="checkbox"
                     :checked="task.status === 'completed'"
                     @change="handleStatusChange(task, $event.target.checked)"
-                    class="checkbox checkbox-primary"
+                    class="checkbox checkbox-primary checkbox-sm sm:checkbox-md mt-1 flex-shrink-0"
                   />
-                  <div>
+                  <div class="flex-1 min-w-0">
                     <div
-                      class="font-semibold"
+                      class="font-semibold text-sm sm:text-base break-words"
                       :class="{
                         'line-through opacity-60': task.status === 'completed'
                       }"
                     >
                       {{ task.title }}
                     </div>
-                    <div class="text-sm text-base-content/70 mt-1">
-                      <span class="badge badge-ghost badge-sm">
+                    <div class="text-xs sm:text-sm text-base-content/70 mt-1 flex flex-wrap gap-1 sm:gap-2">
+                      <span class="badge badge-ghost badge-xs sm:badge-sm">
                         {{ task.project_name }}
                       </span>
-                      <span v-if="task.tank_name" class="ml-2">
-                        <Icon name="mdi:water" class="w-4 h-4 inline" />
-                        <span class="badge badge-info badge-sm">{{ task.tank_name }}</span>
+                      <span v-if="task.tank_name" class="badge badge-info badge-xs sm:badge-sm">
+                        <Icon name="mdi:water" class="w-3 h-3 sm:w-4 sm:h-4 inline" />
+                        {{ task.tank_name }}
                       </span>
                     </div>
                   </div>
                 </div>
               </div>
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 sm:flex-shrink-0">
                 <button
                   v-if="task.project_has_phases && templateHasMultiplePhases(task.project_template_id)"
                   @click="advanceProjectPhase(task)"
-                  class="btn btn-primary btn-sm"
+                  class="btn btn-primary btn-xs sm:btn-sm flex-1 sm:flex-none"
                   :disabled="advancingPhase === task.project_id"
                   :title="'Advance to next phase'"
                 >
-                  <Icon name="mdi:arrow-right" class="w-4 h-4" />
-                  <span v-if="advancingPhase !== task.project_id">Next Phase</span>
+                  <Icon name="mdi:arrow-right" class="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span v-if="advancingPhase !== task.project_id" class="hidden sm:inline">Next Phase</span>
                   <span v-else class="loading loading-spinner loading-xs"></span>
                 </button>
                 <button
                   @click="openTaskModal(task)"
-                  class="btn btn-ghost btn-sm btn-circle"
+                  class="btn btn-ghost btn-xs sm:btn-sm btn-circle"
+                  :title="'View details'"
                 >
-                  <Icon name="mdi:information-outline" class="w-5 h-5" />
+                  <Icon name="mdi:information-outline" class="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
             </div>
@@ -258,52 +264,52 @@
 
     <!-- Task Detail Modal -->
     <dialog ref="taskModal" class="modal">
-      <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">{{ selectedTask?.title }}</h3>
-        <div v-if="selectedTask" class="space-y-4">
+      <div class="modal-box w-11/12 max-w-lg max-h-[90vh] overflow-y-auto">
+        <h3 class="font-bold text-base sm:text-lg mb-3 sm:mb-4 break-words">{{ selectedTask?.title }}</h3>
+        <div v-if="selectedTask" class="space-y-3 sm:space-y-4">
           <div>
-            <label class="label">
-              <span class="label-text font-semibold">Project</span>
+            <label class="label py-1 sm:py-2">
+              <span class="label-text font-semibold text-sm sm:text-base">Project</span>
             </label>
-            <p class="text-base-content/70">{{ selectedTask.project_name }}</p>
+            <p class="text-sm sm:text-base text-base-content/70 break-words">{{ selectedTask.project_name }}</p>
           </div>
           <div v-if="selectedTask.tank_name">
-            <label class="label">
-              <span class="label-text font-semibold">Tank</span>
+            <label class="label py-1 sm:py-2">
+              <span class="label-text font-semibold text-sm sm:text-base">Tank</span>
             </label>
-            <p class="text-base-content/70">
+            <p class="text-sm sm:text-base text-base-content/70">
               <Icon name="mdi:water" class="w-4 h-4 inline" />
               {{ selectedTask.tank_name }}
             </p>
           </div>
           <div v-if="selectedTask.description">
-            <label class="label">
-              <span class="label-text font-semibold">Description</span>
+            <label class="label py-1 sm:py-2">
+              <span class="label-text font-semibold text-sm sm:text-base">Description</span>
             </label>
-            <p class="text-base-content/70">{{ selectedTask.description }}</p>
+            <p class="text-sm sm:text-base text-base-content/70 break-words">{{ selectedTask.description }}</p>
           </div>
           <div>
-            <label class="label">
-              <span class="label-text font-semibold">Due Date</span>
+            <label class="label py-1 sm:py-2">
+              <span class="label-text font-semibold text-sm sm:text-base">Due Date</span>
             </label>
-            <p class="text-base-content/70">{{ formatDate(selectedTask.due_date) }}</p>
+            <p class="text-sm sm:text-base text-base-content/70">{{ formatDate(selectedTask.due_date) }}</p>
           </div>
           <div v-if="selectedTask.time_window">
-            <label class="label">
-              <span class="label-text font-semibold">Time Window</span>
+            <label class="label py-1 sm:py-2">
+              <span class="label-text font-semibold text-sm sm:text-base">Time Window</span>
             </label>
-            <p class="text-base-content/70 capitalize">{{ selectedTask.time_window }}</p>
+            <p class="text-sm sm:text-base text-base-content/70 capitalize">{{ selectedTask.time_window }}</p>
           </div>
           <div v-if="selectedTask.completion_notes">
-            <label class="label">
-              <span class="label-text font-semibold">Completion Notes</span>
+            <label class="label py-1 sm:py-2">
+              <span class="label-text font-semibold text-sm sm:text-base">Completion Notes</span>
             </label>
-            <p class="text-base-content/70">{{ selectedTask.completion_notes }}</p>
+            <p class="text-sm sm:text-base text-base-content/70 break-words">{{ selectedTask.completion_notes }}</p>
           </div>
         </div>
-        <div class="modal-action">
+        <div class="modal-action mt-4 sm:mt-6">
           <form method="dialog">
-            <button class="btn">Close</button>
+            <button class="btn btn-sm sm:btn-md w-full sm:w-auto">Close</button>
           </form>
         </div>
       </div>

@@ -2,8 +2,22 @@
   <div class="min-h-screen bg-base-200">
     <nav class="navbar bg-base-100 shadow-lg">
       <div class="navbar-start">
-        <NuxtLink to="/" class="btn btn-ghost text-xl" active-class="" exact-active-class="">
-          BEC Aquaculture
+        <!-- Mobile menu button -->
+        <div class="dropdown lg:hidden">
+          <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
+            <Icon name="mdi:menu" class="w-6 h-6" />
+          </div>
+          <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+            <li><NuxtLink to="/" @click="closeMobileMenu">Dashboard</NuxtLink></li>
+            <li><NuxtLink to="/tasks" @click="closeMobileMenu">Tasks</NuxtLink></li>
+            <li><NuxtLink to="/projects" @click="closeMobileMenu">Projects</NuxtLink></li>
+            <li><NuxtLink to="/pairs" @click="closeMobileMenu">Mated Pairs</NuxtLink></li>
+            <li v-if="isAdmin()"><NuxtLink to="/admin" @click="closeMobileMenu">Admin</NuxtLink></li>
+          </ul>
+        </div>
+        <NuxtLink to="/" class="btn btn-ghost text-lg sm:text-xl px-2 sm:px-4" active-class="" exact-active-class="">
+          <span class="hidden sm:inline">BEC Aquaculture</span>
+          <span class="sm:hidden">BEC</span>
         </NuxtLink>
       </div>
       <div class="navbar-center hidden lg:flex">
@@ -53,7 +67,7 @@
       </div>
     </nav>
 
-    <main class="container mx-auto px-4 py-8">
+    <main class="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
       <slot />
     </main>
   </div>
@@ -101,6 +115,13 @@ const userName = computed(() => {
 const handleSignOut = async () => {
   await signOut()
   await navigateTo('/auth/login')
+}
+
+const closeMobileMenu = () => {
+  // Close mobile menu by blurring the active element
+  if (document.activeElement) {
+    document.activeElement.blur()
+  }
 }
 </script>
 

@@ -1,33 +1,34 @@
 <template>
   <div>
-    <div class="mb-8 flex justify-between items-center">
-      <div>
-        <h1 class="text-4xl font-bold mb-2">Mated Pairs</h1>
-        <p class="text-base-content/70">Track and manage mated pairs and hatches</p>
+    <div class="mb-4 sm:mb-8">
+      <div class="mb-4 sm:mb-6">
+        <h1 class="text-2xl sm:text-4xl font-bold mb-1 sm:mb-2">Mated Pairs</h1>
+        <p class="text-sm sm:text-base text-base-content/70">Track and manage mated pairs and hatches</p>
       </div>
-      <div class="flex gap-2">
-        <button @click="openTankModal" class="btn btn-outline">
-          <Icon name="mdi:water" class="w-5 h-5" />
-          Manage Tanks
+      <div class="flex flex-col sm:flex-row gap-2">
+        <button @click="openTankModal" class="btn btn-outline btn-sm sm:btn-md w-full sm:w-auto">
+          <Icon name="mdi:water" class="w-4 h-4 sm:w-5 sm:h-5" />
+          <span class="hidden sm:inline">Manage Tanks</span>
+          <span class="sm:hidden">Tanks</span>
         </button>
-        <button @click="openPairModal" class="btn btn-primary">
-          <Icon name="mdi:plus" class="w-5 h-5" />
+        <button @click="openPairModal" class="btn btn-primary btn-sm sm:btn-md w-full sm:w-auto">
+          <Icon name="mdi:plus" class="w-4 h-4 sm:w-5 sm:h-5" />
           New Pair
         </button>
       </div>
     </div>
 
     <!-- Filters -->
-    <div class="card bg-base-100 shadow-xl mb-6">
-      <div class="card-body">
-        <div class="flex flex-wrap gap-4">
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text">Status</span>
+    <div class="card bg-base-100 shadow-xl mb-4 sm:mb-6">
+      <div class="card-body p-4 sm:p-6">
+        <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <div class="form-control w-full sm:w-auto sm:min-w-[150px]">
+            <label class="label py-1 sm:py-2">
+              <span class="label-text text-sm sm:text-base">Status</span>
             </label>
             <select
               v-model="statusFilter"
-              class="select select-bordered"
+              class="select select-bordered w-full text-sm sm:text-base"
               @change="loadPairs"
             >
               <option :value="null">All Statuses</option>
@@ -35,13 +36,13 @@
               <option value="inactive">Inactive</option>
             </select>
           </div>
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text">Tank</span>
+          <div class="form-control w-full sm:w-auto sm:min-w-[150px]">
+            <label class="label py-1 sm:py-2">
+              <span class="label-text text-sm sm:text-base">Tank</span>
             </label>
             <select
               v-model="tankFilter"
-              class="select select-bordered"
+              class="select select-bordered w-full text-sm sm:text-base"
               @change="loadPairs"
             >
               <option :value="null">All Tanks</option>
@@ -54,8 +55,8 @@
               </option>
             </select>
           </div>
-          <div class="form-control flex items-end">
-            <button @click="clearFilters" class="btn btn-ghost">
+          <div class="form-control flex items-end w-full sm:w-auto">
+            <button @click="clearFilters" class="btn btn-ghost btn-sm sm:btn-md w-full sm:w-auto">
               Clear Filters
             </button>
           </div>
@@ -75,20 +76,20 @@
     </div>
 
     <!-- Pairs Grid -->
-    <div v-else-if="displayPairs.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div v-else-if="displayPairs.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
       <div
         v-for="pair in displayPairs"
         :key="pair.id"
         class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow"
       >
-        <div class="card-body">
-          <div class="flex justify-between items-start mb-2">
-            <h2 class="card-title text-lg">
+        <div class="card-body p-4 sm:p-6">
+          <div class="flex justify-between items-start mb-2 gap-2">
+            <h2 class="card-title text-base sm:text-lg flex-1 min-w-0 break-words">
               {{ pair.male_species || 'Unknown' }} × {{ pair.female_species || 'Unknown' }}
             </h2>
-            <div class="dropdown dropdown-end">
-              <div tabindex="0" role="button" class="btn btn-ghost btn-sm btn-circle">
-                <Icon name="mdi:dots-vertical" class="w-5 h-5" />
+            <div class="dropdown dropdown-end flex-shrink-0">
+              <div tabindex="0" role="button" class="btn btn-ghost btn-xs sm:btn-sm btn-circle">
+                <Icon name="mdi:dots-vertical" class="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
               <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow">
                 <li><a @click="openPairModal(pair)">Edit</a></li>
@@ -99,39 +100,39 @@
             </div>
           </div>
 
-          <div class="space-y-2 mb-4">
+          <div class="space-y-1.5 sm:space-y-2 mb-3 sm:mb-4">
             <div class="flex items-center gap-2">
-              <Icon name="mdi:water" class="w-4 h-4 text-base-content/50" />
-              <span class="text-sm text-base-content/70">{{ pair.tank_name }}</span>
+              <Icon name="mdi:water" class="w-3 h-3 sm:w-4 sm:h-4 text-base-content/50 flex-shrink-0" />
+              <span class="text-xs sm:text-sm text-base-content/70 truncate">{{ pair.tank_name }}</span>
             </div>
             <div class="flex items-center gap-2">
-              <Icon name="mdi:calendar" class="w-4 h-4 text-base-content/50" />
-              <span class="text-sm text-base-content/70">
+              <Icon name="mdi:calendar" class="w-3 h-3 sm:w-4 sm:h-4 text-base-content/50 flex-shrink-0" />
+              <span class="text-xs sm:text-sm text-base-content/70 truncate">
                 Paired: {{ pair.paired_date ? formatDate(pair.paired_date) : 'Not set' }}
               </span>
             </div>
             <div v-if="pairHatches(pair.id).length > 0" class="flex items-center gap-2">
-              <Icon name="mdi:egg" class="w-4 h-4 text-base-content/50" />
-              <span class="text-sm text-base-content/70">
+              <Icon name="mdi:egg" class="w-3 h-3 sm:w-4 sm:h-4 text-base-content/50 flex-shrink-0" />
+              <span class="text-xs sm:text-sm text-base-content/70">
                 {{ pairHatches(pair.id).length }} hatch{{ pairHatches(pair.id).length !== 1 ? 'es' : '' }}
               </span>
             </div>
           </div>
 
-          <div v-if="pair.notes" class="text-sm text-base-content/60 mb-4 line-clamp-2">
+          <div v-if="pair.notes" class="text-xs sm:text-sm text-base-content/60 mb-3 sm:mb-4 line-clamp-2 break-words">
             {{ pair.notes }}
           </div>
 
-          <div class="card-actions justify-between items-center">
-            <span class="badge" :class="getStatusBadgeClass(pair.status)">
+          <div class="card-actions justify-between items-center flex-wrap gap-2">
+            <span class="badge badge-sm sm:badge-md" :class="getStatusBadgeClass(pair.status)">
               {{ pair.status }}
             </span>
             <button
               @click="openHatchModal(pair)"
-              class="btn btn-primary btn-sm"
+              class="btn btn-primary btn-xs sm:btn-sm"
             >
-              <Icon name="mdi:plus" class="w-4 h-4" />
-              Hatch
+              <Icon name="mdi:plus" class="w-3 h-3 sm:w-4 sm:h-4" />
+              <span class="hidden sm:inline">Hatch</span>
             </button>
           </div>
         </div>
