@@ -3,7 +3,7 @@
     <div class="mb-8 flex justify-between items-center">
       <div>
         <h1 class="text-4xl font-bold mb-2">Tasks</h1>
-        <p class="text-base-content/70">Manage and track your daily tasks</p>
+        <p class="text-base-content/70">Manage your daily tasks</p>
       </div>
       <div class="flex gap-2">
         <input
