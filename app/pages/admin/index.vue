@@ -38,7 +38,7 @@
             <div class="flex-1">
               <h3 class="font-semibold text-sm sm:text-base">Generate Daily Tasks</h3>
               <p class="text-xs sm:text-sm text-base-content/70 mt-1">
-                Manually trigger task generation for all active projects
+                Manually trigger task generation for all active projects and jobs
               </p>
             </div>
             <button
@@ -96,6 +96,16 @@
             Templates
           </h2>
           <p class="text-sm sm:text-base">Manage project templates, phases, and tasks</p>
+        </div>
+      </NuxtLink>
+
+      <NuxtLink to="/admin/jobs" class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
+        <div class="card-body p-4 sm:p-6">
+          <h2 class="card-title text-base sm:text-lg">
+            <Icon name="mdi:briefcase-outline" class="w-5 h-5 sm:w-6 sm:h-6" />
+            Jobs
+          </h2>
+          <p class="text-sm sm:text-base">Manage recurring jobs with intervals</p>
         </div>
       </NuxtLink>
 

@@ -50,10 +50,6 @@
               <Icon name="mdi:tag" class="w-4 h-4 text-base-content/50" />
               <span class="text-sm text-base-content/70 capitalize">{{ template.type.replace('_', ' ') }}</span>
             </div>
-            <div v-if="template.interval_days" class="flex items-center gap-2">
-              <Icon name="mdi:calendar-repeat" class="w-4 h-4 text-base-content/50" />
-              <span class="text-sm text-base-content/70">Every {{ template.interval_days }} days</span>
-            </div>
           </div>
           <div class="card-actions">
             <button @click="openTemplateBuilder(template)" class="btn btn-primary btn-sm">
@@ -113,32 +109,17 @@
 
           <div class="form-control">
             <label class="label">
-              <span class="label-text">Template Type *</span>
-            </label>
-            <select
-              v-model="templateForm.type"
-              class="select select-bordered"
-              required
-              @change="handleTypeChange"
-            >
-              <option value="lifecycle">Lifecycle</option>
-              <option value="recurring_interval">Recurring Interval</option>
-              <option value="recurring_daily">Recurring Daily</option>
-            </select>
-          </div>
-
-          <div v-if="templateForm.type === 'recurring_interval'" class="form-control">
-            <label class="label">
-              <span class="label-text">Interval (Days) *</span>
+              <span class="label-text">Template Type</span>
             </label>
             <input
-              v-model.number="templateForm.interval_days"
-              type="number"
-              placeholder="Enter interval in days"
+              type="text"
+              value="Lifecycle"
               class="input input-bordered"
-              min="1"
-              required
+              disabled
             />
+            <label class="label">
+              <span class="label-text-alt">Projects use lifecycle templates with phases. For recurring tasks, use Jobs instead.</span>
+            </label>
           </div>
 
           <div class="modal-action">
@@ -175,23 +156,32 @@
               </button>
             </div>
             <div class="divider"></div>
-            <div v-if="builderPhases.length > 0" class="space-y-4">
+            <div v-if="builderPhases.length > 0" class="space-y-4" id="phases-list">
               <div
                 v-for="(phase, index) in builderPhases"
                 :key="phase.id || `temp-${index}`"
-                class="card bg-base-200"
+                class="card bg-base-200 cursor-move"
+                :draggable="true"
+                @dragstart="handleDragStart($event, index)"
+                @dragover.prevent="handleDragOver($event, index)"
+                @drop="handleDrop($event, index)"
+                @dragend="handleDragEnd"
+                :class="{ 'opacity-50': draggedPhaseIndex === index }"
               >
                 <div class="card-body">
                   <div class="flex justify-between items-start mb-4">
-                    <div>
-                      <h5 class="font-semibold text-lg">
-                        Phase {{ phase.order_index }}: {{ phase.name }}
-                      </h5>
-                      <p v-if="phase.description" class="text-sm text-base-content/70 mt-1">
-                        {{ phase.description }}
-                      </p>
-                      <div v-if="phase.duration_days" class="text-sm text-base-content/60 mt-1">
-                        Auto-advance after {{ phase.duration_days }} days
+                    <div class="flex items-center gap-2 flex-1">
+                      <Icon name="mdi:drag" class="w-5 h-5 text-base-content/40 flex-shrink-0" />
+                      <div>
+                        <h5 class="font-semibold text-lg">
+                          Phase {{ phase.order_index }}: {{ phase.name }}
+                        </h5>
+                        <p v-if="phase.description" class="text-sm text-base-content/70 mt-1">
+                          {{ phase.description }}
+                        </p>
+                        <div v-if="phase.duration_days" class="text-sm text-base-content/60 mt-1">
+                          Auto-advance after {{ phase.duration_days }} days
+                        </div>
                       </div>
                     </div>
                     <div class="flex gap-2">
@@ -388,10 +378,12 @@
             </label>
             <select v-model="phaseTaskForm.time_window" class="select select-bordered">
               <option :value="null">No specific time</option>
+              <option value="first">First</option>
               <option value="morning">Morning</option>
               <option value="midday">Midday</option>
               <option value="afternoon">Afternoon</option>
               <option value="evening">Evening</option>
+              <option value="last">Last</option>
             </select>
           </div>
 
@@ -543,6 +535,8 @@ const editingPhaseTask = ref(null)
 const builderTemplate = ref(null)
 const builderPhases = ref([])
 const builderPhaseTasks = ref([])
+const draggedPhaseIndex = ref(null)
+const draggedOverIndex = ref(null)
 const templateToDelete = ref(null)
 const phaseToDelete = ref(null)
 const phaseTaskToDelete = ref(null)
@@ -551,8 +545,7 @@ const submitting = ref(false)
 const templateForm = ref({
   name: '',
   description: '',
-  type: 'lifecycle',
-  interval_days: null
+  type: 'lifecycle'
 })
 
 const phaseForm = ref({
@@ -588,8 +581,7 @@ const openTemplateModal = (template = null) => {
     templateForm.value = {
       name: template.name,
       description: template.description || '',
-      type: template.type,
-      interval_days: template.interval_days || null
+      type: 'lifecycle'
     }
   } else {
     // Creating new template
@@ -597,8 +589,7 @@ const openTemplateModal = (template = null) => {
     templateForm.value = {
       name: '',
       description: '',
-      type: 'lifecycle',
-      interval_days: null
+      type: 'lifecycle'
     }
   }
   templateModal.value?.showModal()
@@ -609,11 +600,6 @@ const closeTemplateModal = () => {
   editingTemplate.value = null
 }
 
-const handleTypeChange = () => {
-  if (templateForm.value.type !== 'recurring_interval') {
-    templateForm.value.interval_days = null
-  }
-}
 
 const handleTemplateSubmit = async () => {
   submitting.value = true
@@ -822,17 +808,70 @@ const confirmDeletePhase = async () => {
   if (!phaseToDelete.value || !phaseToDelete.value.id) return
   submitting.value = true
   try {
-    await deletePhase(phaseToDelete.value.id)
-    showSuccess('Phase deleted successfully')
+    // Store the phase ID before closing the modal (which clears phaseToDelete.value)
+    const phaseIdToDelete = phaseToDelete.value.id
+    const supabase = useSupabaseClient()
+    
+    // Check if any projects are using this phase
+    const { data: projectsUsingPhase, error: checkError } = await supabase
+      .from('projects')
+      .select('id, name')
+      .eq('current_phase_id', phaseIdToDelete)
+    
+    if (checkError) throw checkError
+    
+    // If projects are using this phase, update them to use the first phase of the template (or null)
+    if (projectsUsingPhase && projectsUsingPhase.length > 0) {
+      // Get the first phase of the template (excluding the one we're deleting)
+      const { data: otherPhases } = await supabase
+        .from('phases')
+        .select('id')
+        .eq('template_id', builderTemplate.value.id)
+        .neq('id', phaseIdToDelete)
+        .order('order_index', { ascending: true })
+        .limit(1)
+      
+      const newPhaseId = otherPhases && otherPhases.length > 0 ? otherPhases[0].id : null
+      
+      // Update all projects using this phase
+      const { error: updateError } = await supabase
+        .from('projects')
+        .update({ current_phase_id: newPhaseId })
+        .eq('current_phase_id', phaseIdToDelete)
+      
+      if (updateError) throw updateError
+      
+      if (newPhaseId) {
+        showSuccess(`Phase deleted. ${projectsUsingPhase.length} project(s) moved to the next available phase.`)
+      } else {
+        showSuccess(`Phase deleted. ${projectsUsingPhase.length} project(s) had their phase cleared (no other phases available).`)
+      }
+    }
+    
+    // Now delete the phase
+    const result = await deletePhase(phaseIdToDelete)
+    if (result.error) {
+      throw result.error
+    }
+    
+    if (!projectsUsingPhase || projectsUsingPhase.length === 0) {
+      showSuccess('Phase deleted successfully')
+    }
+    
     closeDeletePhaseModal()
     // Reload phases
     const { data } = await fetchPhases(builderTemplate.value.id)
     builderPhases.value = data || []
     // Remove tasks for deleted phase
-    builderPhaseTasks.value = builderPhaseTasks.value.filter(t => t.phase_id !== phaseToDelete.value.id)
+    builderPhaseTasks.value = builderPhaseTasks.value.filter(t => t.phase_id !== phaseIdToDelete)
   } catch (err) {
     console.error('Error deleting phase:', err)
-    showError('Error deleting phase: ' + (err.message || 'Unknown error'))
+    // Provide a more user-friendly error message
+    if (err.code === '23503') {
+      showError('Cannot delete phase: It is still being used by one or more projects. Please update those projects first.')
+    } else {
+      showError('Error deleting phase: ' + (err.message || 'Unknown error'))
+    }
   } finally {
     submitting.value = false
   }

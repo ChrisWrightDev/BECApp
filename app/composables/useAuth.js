@@ -110,6 +110,16 @@ export const useAuth = () => {
   const signOut = async () => {
     try {
       loading.value = true
+      
+      // Record logout time before signing out
+      try {
+        const { recordLogout } = useSessions()
+        await recordLogout()
+      } catch (sessionError) {
+        console.warn('Error recording logout session:', sessionError)
+        // Continue with logout even if session recording fails
+      }
+      
       const { error } = await supabase.auth.signOut()
       if (error) throw error
       user.value = null

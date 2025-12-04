@@ -3,7 +3,7 @@
     <div class="mb-4 sm:mb-8">
       <div class="mb-4 sm:mb-6">
         <h1 class="text-2xl sm:text-4xl font-bold mb-1 sm:mb-2">Mated Pairs</h1>
-        <p class="text-sm sm:text-base text-base-content/70">Track and manage mated pairs and hatches</p>
+        <p class="text-sm sm:text-base text-base-content/70">Track and manage mated pairs and clutches</p>
       </div>
       <div class="flex flex-col sm:flex-row gap-2">
         <button @click="openTankModal" class="btn btn-outline btn-sm sm:btn-md w-full sm:w-auto">
@@ -93,8 +93,8 @@
               </div>
               <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow">
                 <li><a @click="openPairModal(pair)">Edit</a></li>
-                <li><a @click="openHatchModal(pair)">Add Hatch</a></li>
-                <li><a @click="viewHatches(pair)" class="text-info">View Hatches</a></li>
+                <li><a @click="openHatchModal(pair)">Add Clutch</a></li>
+                <li><a @click="viewHatches(pair)" class="text-info">View Clutches</a></li>
                 <li><a @click="deletePairConfirm(pair)" class="text-error">Delete</a></li>
               </ul>
             </div>
@@ -114,7 +114,7 @@
             <div v-if="pairHatches(pair.id).length > 0" class="flex items-center gap-2">
               <Icon name="mdi:egg" class="w-3 h-3 sm:w-4 sm:h-4 text-base-content/50 flex-shrink-0" />
               <span class="text-xs sm:text-sm text-base-content/70">
-                {{ pairHatches(pair.id).length }} hatch{{ pairHatches(pair.id).length !== 1 ? 'es' : '' }}
+                {{ pairHatches(pair.id).length }} clutch{{ pairHatches(pair.id).length !== 1 ? 'es' : '' }}
               </span>
             </div>
           </div>
@@ -132,7 +132,7 @@
               class="btn btn-primary btn-xs sm:btn-sm"
             >
               <Icon name="mdi:plus" class="w-3 h-3 sm:w-4 sm:h-4" />
-              <span class="hidden sm:inline">Hatch</span>
+              <span class="hidden sm:inline">Clutch</span>
             </button>
           </div>
         </div>
@@ -259,7 +259,7 @@
     <dialog ref="hatchModal" class="modal">
       <div class="modal-box">
         <h3 class="font-bold text-lg mb-4">
-          {{ editingHatch ? 'Edit Hatch' : 'Record New Hatch' }}
+          {{ editingHatch ? 'Edit Clutch' : 'Record New Clutch' }}
         </h3>
         <form @submit.prevent="handleHatchSubmit" class="space-y-4">
           <div v-if="selectedPair" class="alert alert-info">
@@ -269,7 +269,7 @@
 
           <div class="form-control">
             <label class="label">
-              <span class="label-text">Hatch Date *</span>
+              <span class="label-text">Clutch Date *</span>
             </label>
             <input
               v-model="hatchForm.hatch_date"
@@ -323,7 +323,7 @@
     <!-- View Hatches Modal -->
     <dialog ref="hatchesViewModal" class="modal">
       <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">Hatch Records</h3>
+        <h3 class="font-bold text-lg mb-4">Clutch Records</h3>
         <div v-if="selectedPair" class="mb-4">
           <p class="text-sm text-base-content/70">
             Pair: <strong>{{ selectedPair.male_species }} × {{ selectedPair.female_species }}</strong>
@@ -363,7 +363,7 @@
           </div>
         </div>
         <div v-else class="text-center py-8 text-base-content/70">
-          No hatches recorded for this pair
+          No clutches recorded for this pair
         </div>
         <div class="modal-action">
           <button @click="closeHatchesViewModal" class="btn">Close</button>
@@ -372,7 +372,7 @@
             @click="openHatchModal(selectedPair)"
             class="btn btn-primary"
           >
-            Add Hatch
+            Add Clutch
           </button>
         </div>
       </div>
@@ -511,7 +511,7 @@
       <div class="modal-box">
         <h3 class="font-bold text-lg mb-4">Delete Mated Pair</h3>
         <p class="mb-4">
-          Are you sure you want to delete this pair? This will also delete all associated hatches.
+          Are you sure you want to delete this pair? This will also delete all associated clutches.
           This action cannot be undone.
         </p>
         <div class="modal-action">
@@ -529,8 +529,8 @@
 
     <dialog ref="deleteHatchModal" class="modal">
       <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">Delete Hatch</h3>
-        <p class="mb-4">Are you sure you want to delete this hatch record? This action cannot be undone.</p>
+        <h3 class="font-bold text-lg mb-4">Delete Clutch</h3>
+        <p class="mb-4">Are you sure you want to delete this clutch record? This action cannot be undone.</p>
         <div class="modal-action">
           <button @click="closeDeleteHatchModal" class="btn btn-ghost">Cancel</button>
           <button @click="confirmDeleteHatch" class="btn btn-error" :disabled="submitting">
@@ -795,14 +795,14 @@ const handleHatchSubmit = async () => {
       if (result.error) {
         throw result.error
       }
-      showSuccess('Hatch updated successfully')
+      showSuccess('Clutch updated successfully')
     } else {
       // Create the hatch
       const hatchResult = await createHatch(hatchForm.value)
       if (hatchResult.error) {
         throw hatchResult.error
       }
-      showSuccess('Hatch created successfully')
+      showSuccess('Clutch created successfully')
       
       // Create a project from "New Clutch of Eggs" template
       if (selectedPair.value) {
@@ -820,9 +820,9 @@ const handleHatchSubmit = async () => {
             const hatchDate = new Date(hatchForm.value.hatch_date).toLocaleDateString()
             const projectName = `Clutch - ${pairInfo} (${hatchDate})`
             
-            // Create project description with hatch details
-            let projectDescription = `Hatch from pair: ${pairInfo}\n`
-            projectDescription += `Hatch Date: ${hatchDate}\n`
+            // Create project description with clutch details
+            let projectDescription = `Clutch from pair: ${pairInfo}\n`
+            projectDescription += `Clutch Date: ${hatchDate}\n`
             if (hatchForm.value.quantity) {
               projectDescription += `Quantity: ${hatchForm.value.quantity}\n`
             }
@@ -844,7 +844,7 @@ const handleHatchSubmit = async () => {
             if (projectResult.error) {
               console.error('Error creating project from hatch:', projectResult.error)
               // Don't fail the hatch creation if project creation fails
-              showError('Hatch created, but failed to create project: ' + projectResult.error.message)
+              showError('Clutch created, but failed to create project: ' + projectResult.error.message)
             } else {
               // Generate tasks for the project
               const hatchDateObj = new Date(hatchForm.value.hatch_date)
@@ -855,16 +855,16 @@ const handleHatchSubmit = async () => {
                 // Project was created, so just log the error
               }
               
-              showSuccess(`Hatch and project created successfully`)
+              showSuccess(`Clutch and project created successfully`)
             }
           } else {
             console.warn('Template "New Clutch of Eggs" not found. Hatch created but no project was created.')
-            showSuccess('Hatch created successfully (project template not found)')
+            showSuccess('Clutch created successfully (project template not found)')
           }
         } catch (projectErr) {
           console.error('Error creating project from hatch:', projectErr)
           // Don't fail the hatch creation if project creation fails
-          showError('Hatch created, but failed to create project: ' + (projectErr.message || 'Unknown error'))
+          showError('Clutch created, but failed to create project: ' + (projectErr.message || 'Unknown error'))
         }
       }
     }
@@ -873,7 +873,7 @@ const handleHatchSubmit = async () => {
     await loadPairs()
   } catch (err) {
     console.error('Error saving hatch:', err)
-    showError('Error saving hatch: ' + (err.message || 'Unknown error'))
+    showError('Error saving clutch: ' + (err.message || 'Unknown error'))
   } finally {
     submitting.value = false
   }
@@ -988,13 +988,13 @@ const confirmDeleteHatch = async () => {
   submitting.value = true
   try {
     await deleteHatch(hatchToDelete.value.id)
-    showSuccess('Hatch deleted successfully')
+      showSuccess('Clutch deleted successfully')
     closeDeleteHatchModal()
     await loadHatches()
     await loadPairs()
   } catch (err) {
     console.error('Error deleting hatch:', err)
-    showError('Error deleting hatch: ' + (err.message || 'Unknown error'))
+    showError('Error deleting clutch: ' + (err.message || 'Unknown error'))
   } finally {
     submitting.value = false
   }

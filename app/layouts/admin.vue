@@ -10,6 +10,7 @@
           <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
             <li><NuxtLink to="/admin" @click="closeMobileMenu">Dashboard</NuxtLink></li>
             <li><NuxtLink to="/admin/templates" @click="closeMobileMenu">Templates</NuxtLink></li>
+            <li><NuxtLink to="/admin/jobs" @click="closeMobileMenu">Jobs</NuxtLink></li>
             <li><NuxtLink to="/admin/users" @click="closeMobileMenu">Users</NuxtLink></li>
             <li><NuxtLink to="/admin/analytics" @click="closeMobileMenu">Analytics</NuxtLink></li>
           </ul>
@@ -23,6 +24,7 @@
         <ul class="menu menu-horizontal px-1">
           <li><NuxtLink to="/admin">Dashboard</NuxtLink></li>
           <li><NuxtLink to="/admin/templates">Templates</NuxtLink></li>
+          <li><NuxtLink to="/admin/jobs">Jobs</NuxtLink></li>
           <li><NuxtLink to="/admin/users">Users</NuxtLink></li>
           <li><NuxtLink to="/admin/analytics">Analytics</NuxtLink></li>
         </ul>
