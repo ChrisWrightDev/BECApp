@@ -184,7 +184,7 @@ const handleLogin = async () => {
         await generateTasksByCategory('close_shop', today)
         
         // Navigate to dashboard
-        await router.push('/')
+      await router.push('/')
       }
     }
   } catch (err) {

@@ -141,21 +141,21 @@ export const useTasks = () => {
       const transformedTasks = data.map(task => {
         // Handle project-based tasks
         if (task.project_id && task.projects) {
-          const projectName = task.projects?.name || 'Unknown Project'
-          const projectDescription = task.projects?.description || ''
-          const tankName = extractTankFromProject(projectDescription)
-          const hasPhases = task.projects?.template_id && task.projects?.current_phase_id !== null
-          
-          return {
-            ...task,
-            project_name: projectName,
-            tank_name: tankName,
-            project_id: task.projects?.id,
-            project_template_id: task.projects?.template_id,
-            project_current_phase_id: task.projects?.current_phase_id,
-            project_current_phase_order: task.projects?.phases?.order_index,
-            project_has_phases: hasPhases
-          }
+        const projectName = task.projects?.name || 'Unknown Project'
+        const projectDescription = task.projects?.description || ''
+        const tankName = extractTankFromProject(projectDescription)
+        const hasPhases = task.projects?.template_id && task.projects?.current_phase_id !== null
+        
+        return {
+          ...task,
+          project_name: projectName,
+          tank_name: tankName,
+          project_id: task.projects?.id,
+          project_template_id: task.projects?.template_id,
+          project_current_phase_id: task.projects?.current_phase_id,
+          project_current_phase_order: task.projects?.phases?.order_index,
+          project_has_phases: hasPhases
+        }
         }
         
         // Handle job-based tasks
@@ -226,21 +226,21 @@ export const useTasks = () => {
 
       // Handle project-based tasks
       if (data.project_id && data.projects) {
-        const projectName = data.projects?.name || 'Unknown Project'
-        const projectDescription = data.projects?.description || ''
-        const tankName = extractTankFromProject(projectDescription)
-        const hasPhases = data.projects?.template_id && data.projects?.current_phase_id !== null
-        
-        const transformedTask = {
-          ...data,
-          project_name: projectName,
-          tank_name: tankName,
-          project_id: data.projects?.id,
-          project_template_id: data.projects?.template_id,
-          project_current_phase_id: data.projects?.current_phase_id,
-          project_current_phase_order: data.projects?.phases?.order_index,
-          project_has_phases: hasPhases
-        }
+      const projectName = data.projects?.name || 'Unknown Project'
+      const projectDescription = data.projects?.description || ''
+      const tankName = extractTankFromProject(projectDescription)
+      const hasPhases = data.projects?.template_id && data.projects?.current_phase_id !== null
+      
+      const transformedTask = {
+        ...data,
+        project_name: projectName,
+        tank_name: tankName,
+        project_id: data.projects?.id,
+        project_template_id: data.projects?.template_id,
+        project_current_phase_id: data.projects?.current_phase_id,
+        project_current_phase_order: data.projects?.phases?.order_index,
+        project_has_phases: hasPhases
+      }
         
         tasks.value.push(transformedTask)
         return { data: transformedTask, error: null }
@@ -325,28 +325,28 @@ export const useTasks = () => {
 
       // Handle project-based tasks
       if (data.project_id && data.projects) {
-        const projectName = data.projects?.name || 'Unknown Project'
-        const projectDescription = data.projects?.description || ''
-        const tankName = extractTankFromProject(projectDescription)
-        const hasPhases = data.projects?.template_id && data.projects?.current_phase_id !== null
-        
-        const transformedTask = {
-          ...data,
-          project_name: projectName,
-          tank_name: tankName,
-          project_id: data.projects?.id,
-          project_template_id: data.projects?.template_id,
-          project_current_phase_id: data.projects?.current_phase_id,
-          project_current_phase_order: data.projects?.phases?.order_index,
-          project_has_phases: hasPhases
-        }
+      const projectName = data.projects?.name || 'Unknown Project'
+      const projectDescription = data.projects?.description || ''
+      const tankName = extractTankFromProject(projectDescription)
+      const hasPhases = data.projects?.template_id && data.projects?.current_phase_id !== null
+      
+      const transformedTask = {
+        ...data,
+        project_name: projectName,
+        tank_name: tankName,
+        project_id: data.projects?.id,
+        project_template_id: data.projects?.template_id,
+        project_current_phase_id: data.projects?.current_phase_id,
+        project_current_phase_order: data.projects?.phases?.order_index,
+        project_has_phases: hasPhases
+      }
 
-        const index = tasks.value.findIndex(t => t.id === taskId)
-        if (index !== -1) {
-          tasks.value[index] = transformedTask
-        }
+      const index = tasks.value.findIndex(t => t.id === taskId)
+      if (index !== -1) {
+        tasks.value[index] = transformedTask
+      }
 
-        return { data: transformedTask, error: null }
+      return { data: transformedTask, error: null }
       }
       
       // Handle job-based tasks
@@ -698,8 +698,8 @@ export const useTasks = () => {
 
       // Generate tasks for active projects (lifecycle)
       if (activeProjects && activeProjects.length > 0) {
-        for (const project of activeProjects) {
-          if (!project.current_phase_id) continue
+      for (const project of activeProjects) {
+        if (!project.current_phase_id) continue
 
           // For lifecycle projects, only generate if no tasks exist for today
           const { data: existingTasks } = await supabase

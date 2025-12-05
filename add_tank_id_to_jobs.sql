@@ -42,3 +42,4 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
   AND tc.table_name = 'jobs'
   AND kcu.column_name = 'tank_id';
 
+

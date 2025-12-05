@@ -1,3 +1,4 @@
+
 -- SQL Query to Populate Tanks Table
 -- Generates all tank numbers in format: [A-F][1-4][1-12]
 -- Examples: A11, A12, ..., A112, A21, ..., F412
@@ -27,4 +28,5 @@ ORDER BY letter, first_num::integer, last_num::integer;
 
 -- View a sample of the generated tanks
 -- SELECT name FROM tanks ORDER BY name LIMIT 20;
+
 

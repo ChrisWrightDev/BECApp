@@ -162,25 +162,25 @@
               </div>
               <div class="flex flex-col items-end gap-2 sm:flex-shrink-0">
                 <div class="flex items-center gap-2">
-                  <button
-                    v-if="task.project_has_phases && templateHasMultiplePhases(task.project_template_id)"
-                    @click="advanceProjectPhase(task)"
-                    class="btn btn-primary btn-xs sm:btn-sm flex-1 sm:flex-none"
-                    :disabled="advancingPhase === task.project_id"
-                    :title="'Advance to next phase'"
-                  >
-                    <Icon name="mdi:arrow-right" class="w-3 h-3 sm:w-4 sm:h-4" />
-                    <span v-if="advancingPhase !== task.project_id" class="hidden sm:inline">Next Phase</span>
-                    <span v-else class="loading loading-spinner loading-xs"></span>
-                  </button>
-                  <button
-                    @click="openTaskModal(task)"
-                    class="btn btn-ghost btn-xs sm:btn-sm btn-circle"
-                    :title="'View details'"
-                  >
-                    <Icon name="mdi:information-outline" class="w-4 h-4 sm:w-5 sm:h-5" />
-                  </button>
-                </div>
+                <button
+                  v-if="task.project_has_phases && templateHasMultiplePhases(task.project_template_id)"
+                  @click="advanceProjectPhase(task)"
+                  class="btn btn-primary btn-xs sm:btn-sm flex-1 sm:flex-none"
+                  :disabled="advancingPhase === task.project_id"
+                  :title="'Advance to next phase'"
+                >
+                  <Icon name="mdi:arrow-right" class="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span v-if="advancingPhase !== task.project_id" class="hidden sm:inline">Next Phase</span>
+                  <span v-else class="loading loading-spinner loading-xs"></span>
+                </button>
+                <button
+                  @click="openTaskModal(task)"
+                  class="btn btn-ghost btn-xs sm:btn-sm btn-circle"
+                  :title="'View details'"
+                >
+                  <Icon name="mdi:information-outline" class="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+              </div>
                 <div
                   v-if="task.project_has_phases && templateHasMultiplePhases(task.project_template_id) && getNextPhaseDescription(task)"
                   class="text-xs text-base-content/60 text-right max-w-[150px] sm:max-w-[200px]"
@@ -343,7 +343,7 @@ const isTaskWithinTimeWindow = (task) => {
     return false
   }
   
-  // Get current time
+    // Get current time
   const now = new Date()
   const currentHours = now.getHours()
   const currentMinutes = now.getMinutes()

@@ -6,7 +6,7 @@
         <p class="text-base-content/70">View your tasks in a calendar format</p>
       </div>
       <div class="flex gap-2">
-        <NuxtLink to="/tasks" class="btn btn-ghost">
+        <NuxtLink to="/" class="btn btn-ghost">
           <Icon name="mdi:format-list-bulleted" class="w-5 h-5" />
           List View
         </NuxtLink>

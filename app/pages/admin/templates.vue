@@ -172,15 +172,15 @@
                   <div class="flex justify-between items-start mb-4">
                     <div class="flex items-center gap-2 flex-1">
                       <Icon name="mdi:drag" class="w-5 h-5 text-base-content/40 flex-shrink-0" />
-                      <div>
-                        <h5 class="font-semibold text-lg">
-                          Phase {{ phase.order_index }}: {{ phase.name }}
-                        </h5>
-                        <p v-if="phase.description" class="text-sm text-base-content/70 mt-1">
-                          {{ phase.description }}
-                        </p>
-                        <div v-if="phase.duration_days" class="text-sm text-base-content/60 mt-1">
-                          Auto-advance after {{ phase.duration_days }} days
+                    <div>
+                      <h5 class="font-semibold text-lg">
+                        Phase {{ phase.order_index }}: {{ phase.name }}
+                      </h5>
+                      <p v-if="phase.description" class="text-sm text-base-content/70 mt-1">
+                        {{ phase.description }}
+                      </p>
+                      <div v-if="phase.duration_days" class="text-sm text-base-content/60 mt-1">
+                        Auto-advance after {{ phase.duration_days }} days
                         </div>
                       </div>
                     </div>
@@ -855,7 +855,7 @@ const confirmDeletePhase = async () => {
     }
     
     if (!projectsUsingPhase || projectsUsingPhase.length === 0) {
-      showSuccess('Phase deleted successfully')
+    showSuccess('Phase deleted successfully')
     }
     
     closeDeletePhaseModal()
@@ -870,7 +870,7 @@ const confirmDeletePhase = async () => {
     if (err.code === '23503') {
       showError('Cannot delete phase: It is still being used by one or more projects. Please update those projects first.')
     } else {
-      showError('Error deleting phase: ' + (err.message || 'Unknown error'))
+    showError('Error deleting phase: ' + (err.message || 'Unknown error'))
     }
   } finally {
     submitting.value = false
