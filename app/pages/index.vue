@@ -37,7 +37,9 @@
                     type="checkbox"
                     :checked="task.status === 'completed'"
                     @change="handleStatusChange(task, $event.target.checked)"
+                    :disabled="isTaskDisabled(task)"
                     class="checkbox checkbox-primary checkbox-sm sm:checkbox-md mt-1 flex-shrink-0"
+                    :title="isTaskDisabled(task) ? 'Complete previous tasks first' : ''"
                   />
                   <div class="flex-1 min-w-0">
                     <div
@@ -72,13 +74,29 @@
                     <div v-if="task.description" class="text-xs sm:text-sm text-base-content/60 mt-1 break-words">
                       {{ task.description }}
                     </div>
+                    <!-- Show collapsed indicator -->
+                    <div v-if="task._sequentialGroupKey && task._groupSize && !isSequentialGroupExpanded(task._sequentialGroupKey)" class="text-xs text-base-content/50 mt-1 italic">
+                      {{ task._groupSize - 1 }} more task{{ task._groupSize - 1 !== 1 ? 's' : '' }} in sequence
+                    </div>
                   </div>
                 </div>
               </div>
               <div class="flex flex-col items-end gap-2 sm:flex-shrink-0">
                 <div class="flex items-center gap-2">
+                <!-- Collapse/Expand button for sequential groups -->
                 <button
-                  v-if="task.project_has_phases && templateHasMultiplePhases(task.project_template_id)"
+                  v-if="task._sequentialGroupKey"
+                  @click="toggleSequentialGroup(task._sequentialGroupKey)"
+                  class="btn btn-ghost btn-xs sm:btn-sm btn-circle"
+                  :title="isSequentialGroupExpanded(task._sequentialGroupKey) ? 'Collapse tasks' : 'Expand tasks'"
+                >
+                  <Icon 
+                    :name="isSequentialGroupExpanded(task._sequentialGroupKey) ? 'mdi:chevron-up' : 'mdi:chevron-down'" 
+                    class="w-4 h-4 sm:w-5 sm:h-5" 
+                  />
+                </button>
+                <button
+                  v-if="shouldShowNextPhaseButton(task)"
                   @click="advanceProjectPhase(task)"
                   class="btn btn-primary btn-xs sm:btn-sm flex-1 sm:flex-none"
                   :disabled="advancingPhase === task.project_id"
@@ -97,7 +115,7 @@
                 </button>
               </div>
                 <div
-                  v-if="task.project_has_phases && templateHasMultiplePhases(task.project_template_id) && getNextPhaseDescription(task)"
+                  v-if="shouldShowNextPhaseButton(task) && getNextPhaseDescription(task)"
                   class="text-xs text-base-content/60 text-right max-w-[150px] sm:max-w-[200px]"
                 >
                   {{ getNextPhaseDescription(task) }}
@@ -243,6 +261,9 @@ const router = useRouter()
 // Cache for next phase descriptions (task_id -> description)
 const nextPhaseDescriptionCache = ref(new Map())
 
+// Track expanded sequential groups (key: "phase-{project_id}-{phase_id}" or "job-{job_id}")
+const expandedSequentialGroups = ref(new Set())
+
 // Helper function to check if a task with scheduled_time is within 1 hour of its start time
 // Returns true if within 1 hour before, or if the time has passed (always show after time)
 const isTaskWithinTimeWindow = (task) => {
@@ -298,7 +319,34 @@ const displayTasks = computed(() => {
   return tasksToDisplay
 })
 
+// Get group key for a sequential task
+// Includes due_date to separate tasks from same phase/job on different days
+const getSequentialGroupKey = (task) => {
+  if (task.phase_requires_sequential && task.project_id && task.project_current_phase_id && task.due_date) {
+    return `phase-${task.project_id}-${task.project_current_phase_id}-${task.due_date}`
+  }
+  if (task.job_requires_sequential && task.job_id && task.due_date) {
+    return `job-${task.job_id}-${task.due_date}`
+  }
+  return null
+}
+
+// Get the active task (first incomplete) in a sequential group
+const getActiveTaskInGroup = (groupTasks) => {
+  // Sort by order_index
+  const sorted = [...groupTasks].sort((a, b) => {
+    const orderA = a.phase_task_order_index ?? a.job_task_order_index ?? 0
+    const orderB = b.phase_task_order_index ?? b.job_task_order_index ?? 0
+    return orderA - orderB
+  })
+  
+  // Find first incomplete task
+  const activeTask = sorted.find(t => t.status !== 'completed')
+  return activeTask || sorted[sorted.length - 1] // If all completed, return last one
+}
+
 // Ordered tasks: First -> Timed (within 1 hour or past) -> No time -> Last
+// With sequential groups collapsed
 const orderedTasks = computed(() => {
   const tasks = [...displayTasks.value]
   
@@ -328,8 +376,105 @@ const orderedTasks = computed(() => {
   })
   
   // Combine in order: First -> Timed -> No Time -> Last
-  return [...firstTasks, ...timedTasks, ...noTimeTasks, ...lastTasks]
+  const allTasks = [...firstTasks, ...timedTasks, ...noTimeTasks, ...lastTasks]
+  
+  // Group sequential tasks to find active tasks
+  const sequentialGroups = new Map()
+  const seenGroups = new Set()
+  
+  allTasks.forEach(task => {
+    const groupKey = getSequentialGroupKey(task)
+    if (groupKey) {
+      if (!sequentialGroups.has(groupKey)) {
+        sequentialGroups.set(groupKey, [])
+      }
+      sequentialGroups.get(groupKey).push(task)
+    }
+  })
+  
+  // Process tasks: show only active task from sequential groups unless expanded
+  const processedTasks = allTasks.map(task => {
+    const groupKey = getSequentialGroupKey(task)
+    
+    if (!groupKey) {
+      // Non-sequential task - always show
+      return task
+    }
+    
+    const groupTasks = sequentialGroups.get(groupKey)
+    const isExpanded = expandedSequentialGroups.value.has(groupKey)
+    const activeTask = getActiveTaskInGroup(groupTasks)
+    
+    if (isExpanded) {
+      // Show all tasks in the group, mark which is active
+      return {
+        ...task,
+        _sequentialGroupKey: groupKey,
+        _isActiveTask: task.id === activeTask.id
+      }
+    } else {
+      // Show only if this is the active task
+      if (task.id === activeTask.id) {
+        return {
+          ...task,
+          _sequentialGroupKey: groupKey,
+          _isActiveTask: true,
+          _groupSize: groupTasks.length
+        }
+      } else {
+        // Hide this task
+        return null
+      }
+    }
+  }).filter(task => task !== null)
+  
+  return processedTasks
 })
+
+// Check if a task should be disabled due to sequential requirements
+const isTaskDisabled = (task) => {
+  // If task is already completed, don't disable it
+  if (task.status === 'completed') {
+    return false
+  }
+  
+  // Check for phase-based sequential requirements
+  if (task.phase_requires_sequential && task.phase_task_order_index !== null && task.phase_task_order_index !== undefined) {
+    // Find all tasks from the same phase/project
+    const samePhaseTasks = orderedTasks.value.filter(t => 
+      t.project_id === task.project_id &&
+      t.project_current_phase_id === task.project_current_phase_id &&
+      t.phase_task_order_index !== null &&
+      t.phase_task_order_index !== undefined
+    )
+    
+    // Check if any previous task (lower order_index) is not completed
+    for (const t of samePhaseTasks) {
+      if (t.phase_task_order_index < task.phase_task_order_index && t.status !== 'completed') {
+        return true
+      }
+    }
+  }
+  
+  // Check for job-based sequential requirements
+  if (task.job_requires_sequential && task.job_task_order_index !== null && task.job_task_order_index !== undefined) {
+    // Find all tasks from the same job
+    const sameJobTasks = orderedTasks.value.filter(t => 
+      t.job_id === task.job_id &&
+      t.job_task_order_index !== null &&
+      t.job_task_order_index !== undefined
+    )
+    
+    // Check if any previous task (lower order_index) is not completed
+    for (const t of sameJobTasks) {
+      if (t.job_task_order_index < task.job_task_order_index && t.status !== 'completed') {
+        return true
+      }
+    }
+  }
+  
+  return false
+}
 
 // Methods
 const loadTasks = async () => {
@@ -342,6 +487,12 @@ const loadTasks = async () => {
 }
 
 const handleStatusChange = async (task, isCompleted) => {
+  // Prevent completing tasks out of order
+  if (isCompleted && isTaskDisabled(task)) {
+    showError('Please complete previous tasks first')
+    return
+  }
+  
   const newStatus = isCompleted ? 'completed' : 'pending'
   await updateTaskStatus(task.id, newStatus)
   
@@ -383,6 +534,23 @@ const handleLogout = async () => {
   } else {
     await router.push('/auth/login')
   }
+}
+
+// Toggle sequential group expansion
+const toggleSequentialGroup = (groupKey) => {
+  // Create a new Set to ensure reactivity
+  const newSet = new Set(expandedSequentialGroups.value)
+  if (newSet.has(groupKey)) {
+    newSet.delete(groupKey)
+  } else {
+    newSet.add(groupKey)
+  }
+  expandedSequentialGroups.value = newSet
+}
+
+// Check if sequential group is expanded
+const isSequentialGroupExpanded = (groupKey) => {
+  return expandedSequentialGroups.value.has(groupKey)
 }
 
 const getTimeWindowIcon = (window) => {
@@ -472,6 +640,42 @@ const checkTemplatePhaseCounts = async () => {
 const templateHasMultiplePhases = (templateId) => {
   if (!templateId) return false
   return (templatePhaseCountCache.value.get(templateId) || 0) > 1
+}
+
+// Check if Next Phase button should be shown for this task
+const shouldShowNextPhaseButton = (task) => {
+  // Basic check: must have phases and multiple phases in template
+  if (!task.project_has_phases || !templateHasMultiplePhases(task.project_template_id)) {
+    return false
+  }
+  
+  // If phase doesn't require sequential completion, show button on all tasks
+  if (!task.phase_requires_sequential) {
+    return true
+  }
+  
+  // If sequential is required, only show on the last task (highest order_index)
+  if (task.phase_requires_sequential && task.phase_task_order_index !== null && task.phase_task_order_index !== undefined) {
+    // Find all tasks from the same phase/project
+    const samePhaseTasks = orderedTasks.value.filter(t => 
+      t.project_id === task.project_id &&
+      t.project_current_phase_id === task.project_current_phase_id &&
+      t.phase_task_order_index !== null &&
+      t.phase_task_order_index !== undefined
+    )
+    
+    if (samePhaseTasks.length === 0) {
+      return true // No other tasks, show button
+    }
+    
+    // Find the maximum order_index
+    const maxOrderIndex = Math.max(...samePhaseTasks.map(t => t.phase_task_order_index))
+    
+    // Only show if this task has the maximum order_index
+    return task.phase_task_order_index === maxOrderIndex
+  }
+  
+  return true
 }
 
 // Get next phase description for a task

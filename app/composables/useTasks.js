@@ -100,13 +100,23 @@ export const useTasks = () => {
             phases:current_phase_id (
               id,
               name,
-              order_index
+              order_index,
+              requires_sequential
             )
+          ),
+          phase_tasks:phase_task_id (
+            id,
+            order_index
           ),
           jobs:job_id (
             id,
             name,
-            description
+            description,
+            requires_sequential
+          ),
+          job_tasks:job_task_id (
+            id,
+            order_index
           )
         `)
         .order('due_date', { ascending: true })
@@ -154,7 +164,9 @@ export const useTasks = () => {
           project_template_id: task.projects?.template_id,
           project_current_phase_id: task.projects?.current_phase_id,
           project_current_phase_order: task.projects?.phases?.order_index,
-          project_has_phases: hasPhases
+          project_has_phases: hasPhases,
+          phase_requires_sequential: task.projects?.phases?.requires_sequential || false,
+          phase_task_order_index: task.phase_tasks?.order_index || null
         }
         }
         
@@ -165,7 +177,9 @@ export const useTasks = () => {
           return {
             ...task,
             job_name: jobName,
-            job_id: task.jobs?.id
+            job_id: task.jobs?.id,
+            job_requires_sequential: task.jobs?.requires_sequential || false,
+            job_task_order_index: task.job_tasks?.order_index || null
           }
         }
         
@@ -211,13 +225,23 @@ export const useTasks = () => {
             phases:current_phase_id (
               id,
               name,
-              order_index
+              order_index,
+              requires_sequential
             )
+          ),
+          phase_tasks:phase_task_id (
+            id,
+            order_index
           ),
           jobs:job_id (
             id,
             name,
-            description
+            description,
+            requires_sequential
+          ),
+          job_tasks:job_task_id (
+            id,
+            order_index
           )
         `)
         .single()
@@ -239,7 +263,9 @@ export const useTasks = () => {
         project_template_id: data.projects?.template_id,
         project_current_phase_id: data.projects?.current_phase_id,
         project_current_phase_order: data.projects?.phases?.order_index,
-        project_has_phases: hasPhases
+        project_has_phases: hasPhases,
+        phase_requires_sequential: data.projects?.phases?.requires_sequential || false,
+        phase_task_order_index: data.phase_tasks?.order_index || null
       }
         
         tasks.value.push(transformedTask)
@@ -310,13 +336,23 @@ export const useTasks = () => {
             phases:current_phase_id (
               id,
               name,
-              order_index
+              order_index,
+              requires_sequential
             )
+          ),
+          phase_tasks:phase_task_id (
+            id,
+            order_index
           ),
           jobs:job_id (
             id,
             name,
-            description
+            description,
+            requires_sequential
+          ),
+          job_tasks:job_task_id (
+            id,
+            order_index
           )
         `)
         .single()
@@ -338,7 +374,9 @@ export const useTasks = () => {
         project_template_id: data.projects?.template_id,
         project_current_phase_id: data.projects?.current_phase_id,
         project_current_phase_order: data.projects?.phases?.order_index,
-        project_has_phases: hasPhases
+        project_has_phases: hasPhases,
+        phase_requires_sequential: data.projects?.phases?.requires_sequential || false,
+        phase_task_order_index: data.phase_tasks?.order_index || null
       }
 
       const index = tasks.value.findIndex(t => t.id === taskId)
@@ -466,8 +504,13 @@ export const useTasks = () => {
             phases:current_phase_id (
               id,
               name,
-              order_index
+              order_index,
+              requires_sequential
             )
+          ),
+          phase_tasks:phase_task_id (
+            id,
+            order_index
           )
         `)
 
@@ -488,7 +531,9 @@ export const useTasks = () => {
           project_template_id: task.projects?.template_id,
           project_current_phase_id: task.projects?.current_phase_id,
           project_current_phase_order: task.projects?.phases?.order_index,
-          project_has_phases: hasPhases
+          project_has_phases: hasPhases,
+          phase_requires_sequential: task.projects?.phases?.requires_sequential || false,
+          phase_task_order_index: task.phase_tasks?.order_index || null
         }
       })
 
@@ -584,7 +629,12 @@ export const useTasks = () => {
           jobs:job_id (
             id,
             name,
-            description
+            description,
+            requires_sequential
+          ),
+          job_tasks:job_task_id (
+            id,
+            order_index
           )
         `)
 
@@ -597,7 +647,9 @@ export const useTasks = () => {
         return {
           ...task,
           job_name: jobName,
-          job_id: task.jobs?.id
+          job_id: task.jobs?.id,
+          job_requires_sequential: task.jobs?.requires_sequential || false,
+          job_task_order_index: task.job_tasks?.order_index || null
         }
       })
 

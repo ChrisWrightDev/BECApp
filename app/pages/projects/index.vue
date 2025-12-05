@@ -204,6 +204,20 @@
             </select>
           </div>
 
+          <div v-if="editingProject && editingProject.status === 'active'" class="form-control">
+            <label class="label py-1 sm:py-2">
+              <span class="label-text text-sm sm:text-base">Start Date</span>
+            </label>
+            <input
+              v-model="projectForm.started_at"
+              type="date"
+              class="input input-bordered w-full text-sm sm:text-base"
+            />
+            <label class="label">
+              <span class="label-text-alt text-base-content/50">Change the original start date if it was entered incorrectly</span>
+            </label>
+          </div>
+
           <div class="modal-action mt-4 sm:mt-6 flex-col sm:flex-row gap-2">
             <button type="button" @click="closeModal" class="btn btn-ghost btn-sm sm:btn-md w-full sm:w-auto order-2 sm:order-1">
               Cancel
@@ -285,7 +299,8 @@ const projectForm = ref({
   description: '',
   template_id: null,
   tank_id: null,
-  status: 'active'
+  status: 'active',
+  started_at: null
 })
 
 // Computed
@@ -322,7 +337,8 @@ const openCreateModal = async () => {
     description: '',
     template_id: null,
     tank_id: null,
-    status: 'active'
+    status: 'active',
+    started_at: null
   }
   await Promise.all([loadTemplates(), loadTanks()])
   projectModal.value?.showModal()
@@ -330,12 +346,18 @@ const openCreateModal = async () => {
 
 const openEditModal = async (project) => {
   editingProject.value = project
+  // Format started_at date for input (YYYY-MM-DD)
+  const startedAtDate = project.started_at 
+    ? new Date(project.started_at).toISOString().split('T')[0]
+    : null
+  
   projectForm.value = {
     name: project.name,
     description: project.description || '',
     template_id: project.template_id,
     tank_id: project.tank_id || null,
-    status: project.status
+    status: project.status,
+    started_at: startedAtDate
   }
   await Promise.all([loadTemplates(), loadTanks()])
   projectModal.value?.showModal()
@@ -350,7 +372,18 @@ const handleSubmit = async () => {
   submitting.value = true
   try {
     if (editingProject.value) {
-      await updateProject(editingProject.value.id, projectForm.value)
+      // Prepare update data
+      const updateData = { ...projectForm.value }
+      
+      // Convert started_at date string to ISO timestamp if provided
+      if (updateData.started_at) {
+        updateData.started_at = new Date(updateData.started_at).toISOString()
+      } else {
+        // Remove started_at from update if not provided (don't change it)
+        delete updateData.started_at
+      }
+      
+      await updateProject(editingProject.value.id, updateData)
       showSuccess('Project updated successfully')
     } else {
       const { data: newProject, error: projectError } = await createProject(projectForm.value)
@@ -422,6 +455,26 @@ const getStatusBadgeClass = (status) => {
 
 const formatDate = (date) => {
   if (!date) return 'N/A'
+  // Parse date string to avoid timezone issues
+  // If it's a date string (YYYY-MM-DD), parse it as local date
+  const dateStr = typeof date === 'string' ? date : date.toISOString()
+  const dateMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  
+  if (dateMatch) {
+    // Parse as local date to avoid timezone shift
+    const year = parseInt(dateMatch[1], 10)
+    const month = parseInt(dateMatch[2], 10) - 1 // Month is 0-indexed
+    const day = parseInt(dateMatch[3], 10)
+    const localDate = new Date(year, month, day)
+    
+    return localDate.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  }
+  
+  // Fallback for full timestamp strings
   return new Date(date).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',

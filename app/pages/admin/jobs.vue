@@ -59,6 +59,10 @@
               <Icon name="mdi:tag" class="w-4 h-4 text-base-content/50" />
               <span class="text-sm text-base-content/70 capitalize">{{ job.status }}</span>
             </div>
+            <div v-if="job.requires_sequential" class="flex items-center gap-2">
+              <Icon name="mdi:order-sequential" class="w-4 h-4 text-base-content/50" />
+              <span class="text-sm text-base-content/70">Sequential task completion required</span>
+            </div>
           </div>
           <div class="card-actions">
             <button @click="openJobModal(job)" class="btn btn-primary btn-sm">
@@ -154,6 +158,20 @@
                 {{ tank.name }}
               </option>
             </select>
+          </div>
+
+          <div class="form-control">
+            <label class="label cursor-pointer">
+              <span class="label-text">Require Sequential Task Completion</span>
+              <input
+                v-model="jobForm.requires_sequential"
+                type="checkbox"
+                class="toggle toggle-primary"
+              />
+            </label>
+            <label class="label">
+              <span class="label-text-alt">If enabled, tasks in this job must be completed in order</span>
+            </label>
           </div>
 
           <div class="form-control">
@@ -454,7 +472,8 @@ const jobForm = ref({
   description: '',
   interval_days: 1,
   tank_id: null,
-  status: 'active'
+  status: 'active',
+  requires_sequential: false
 })
 
 const jobTaskForm = ref({
@@ -487,7 +506,8 @@ const openJobModal = async (job = null) => {
       description: job.description || '',
       interval_days: job.interval_days,
       tank_id: job.tank_id || null,
-      status: job.status
+      status: job.status,
+      requires_sequential: job.requires_sequential || false
     }
   } else {
     editingJob.value = null
@@ -496,7 +516,8 @@ const openJobModal = async (job = null) => {
       description: '',
       interval_days: 1,
       tank_id: null,
-      status: 'active'
+      status: 'active',
+      requires_sequential: false
     }
   }
   jobModal.value?.showModal()

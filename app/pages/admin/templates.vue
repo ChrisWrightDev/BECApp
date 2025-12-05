@@ -181,8 +181,12 @@
                       </p>
                       <div v-if="phase.duration_days" class="text-sm text-base-content/60 mt-1">
                         Auto-advance after {{ phase.duration_days }} days
-                        </div>
                       </div>
+                      <div v-if="phase.requires_sequential" class="text-sm text-base-content/60 mt-1 flex items-center gap-1">
+                        <Icon name="mdi:order-sequential" class="w-4 h-4" />
+                        <span>Sequential task completion required</span>
+                      </div>
+                    </div>
                     </div>
                     <div class="flex gap-2">
                       <button
@@ -322,6 +326,20 @@
               class="input input-bordered"
               min="1"
             />
+          </div>
+
+          <div class="form-control">
+            <label class="label cursor-pointer">
+              <span class="label-text">Require Sequential Task Completion</span>
+              <input
+                v-model="phaseForm.requires_sequential"
+                type="checkbox"
+                class="toggle toggle-primary"
+              />
+            </label>
+            <label class="label">
+              <span class="label-text-alt">If enabled, tasks in this phase must be completed in order</span>
+            </label>
           </div>
 
           <div class="modal-action">
@@ -553,7 +571,8 @@ const phaseForm = ref({
   name: '',
   description: '',
   order_index: 1,
-  duration_days: null
+  duration_days: null,
+  requires_sequential: false
 })
 
 const phaseTaskForm = ref({
@@ -664,7 +683,8 @@ const openPhaseModal = (phase = null) => {
       name: phase.name,
       description: phase.description || '',
       order_index: phase.order_index,
-      duration_days: phase.duration_days || null
+      duration_days: phase.duration_days || null,
+      requires_sequential: phase.requires_sequential || false
     }
   } else {
     phaseForm.value = {
@@ -672,7 +692,8 @@ const openPhaseModal = (phase = null) => {
       name: '',
       description: '',
       order_index: builderPhases.value.length + 1,
-      duration_days: null
+      duration_days: null,
+      requires_sequential: false
     }
   }
   phaseModal.value?.showModal()

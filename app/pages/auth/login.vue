@@ -30,13 +30,26 @@
             <label class="label">
               <span class="label-text">Password</span>
             </label>
-            <input
-              v-model="password"
-              type="password"
-              placeholder="Password"
-              class="input input-bordered w-full"
-              required
-            />
+            <div class="relative">
+              <input
+                v-model="password"
+                :type="showPassword ? 'text' : 'password'"
+                placeholder="Password"
+                class="input input-bordered w-full pr-10"
+                required
+              />
+              <button
+                type="button"
+                @click="showPassword = !showPassword"
+                class="absolute right-3 top-1/2 -translate-y-1/2 btn btn-ghost btn-sm btn-circle"
+                tabindex="-1"
+              >
+                <Icon 
+                  :name="showPassword ? 'mdi:eye-off' : 'mdi:eye'" 
+                  class="w-5 h-5"
+                />
+              </button>
+            </div>
           </div>
 
           <div class="form-control mt-6">
@@ -65,6 +78,7 @@ const email = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
+const showPassword = ref(false)
 
 const { signIn } = useAuth()
 const { recordLogin } = useSessions()
