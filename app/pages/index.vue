@@ -1,93 +1,8 @@
 <template>
   <div>
     <div class="mb-4 sm:mb-8">
-      <div class="mb-4 sm:mb-6">
-        <h1 class="text-2xl sm:text-4xl font-bold mb-1 sm:mb-2">Tasks</h1>
-        <p class="text-sm sm:text-base text-base-content/70">Manage your daily tasks</p>
-      </div>
-      <div class="flex flex-col sm:flex-row gap-2">
-        <input
-          v-model="selectedDate"
-          type="date"
-          class="input input-bordered w-full sm:w-auto text-sm sm:text-base"
-          @change="handleDateChange"
-        />
-        <div class="flex gap-2 flex-wrap">
-          <button
-            @click="showFilters = !showFilters"
-            class="btn btn-outline btn-sm sm:btn-md flex-1 sm:flex-none"
-            :class="{ 'btn-active': showFilters }"
-          >
-            <Icon name="mdi:filter" class="w-4 h-4 sm:w-5 sm:h-5" />
-            <span class="hidden sm:inline">Filters</span>
-          </button>
-          <NuxtLink to="/tasks/calendar" class="btn btn-outline btn-sm sm:btn-md flex-1 sm:flex-none">
-            <Icon name="mdi:calendar" class="w-4 h-4 sm:w-5 sm:h-5" />
-            <span class="hidden sm:inline">Calendar</span>
-          </NuxtLink>
-          <button
-            v-if="isAdmin()"
-            @click="generateDailyTasksHandler"
-            class="btn btn-primary btn-sm sm:btn-md flex-1 sm:flex-none"
-            :disabled="generating"
-          >
-            <Icon name="mdi:refresh" class="w-4 h-4 sm:w-5 sm:h-5" />
-            <span v-if="generating" class="loading loading-spinner loading-xs sm:loading-sm"></span>
-            <span class="hidden sm:inline">Generate Tasks</span>
-            <span class="sm:hidden">Generate</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Filters Panel -->
-    <div v-if="showFilters" class="card bg-base-100 shadow-xl mb-4 sm:mb-6">
-      <div class="card-body p-4 sm:p-6">
-        <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
-          <div class="form-control w-full sm:w-auto sm:min-w-[150px]">
-            <label class="label py-1 sm:py-2">
-              <span class="label-text text-sm sm:text-base">Status</span>
-            </label>
-            <select
-              v-model="filters.status"
-              class="select select-bordered w-full text-sm sm:text-base"
-              @change="applyFilters"
-            >
-              <option :value="null">All Statuses</option>
-              <option value="pending">Pending</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
-              <option value="skipped">Skipped</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-          </div>
-
-          <div class="form-control w-full sm:w-auto sm:min-w-[150px]">
-            <label class="label py-1 sm:py-2">
-              <span class="label-text text-sm sm:text-base">Time Window</span>
-            </label>
-            <select
-              v-model="filters.timeWindow"
-              class="select select-bordered w-full text-sm sm:text-base"
-              @change="applyFilters"
-            >
-              <option :value="null">All Times</option>
-              <option value="first">First</option>
-              <option value="morning">Morning</option>
-              <option value="midday">Midday</option>
-              <option value="afternoon">Afternoon</option>
-              <option value="evening">Evening</option>
-              <option value="last">Last</option>
-            </select>
-          </div>
-
-          <div class="form-control flex items-end w-full sm:w-auto">
-            <button @click="clearFilters" class="btn btn-ghost btn-sm sm:btn-md w-full sm:w-auto">
-              Clear Filters
-            </button>
-          </div>
-        </div>
-      </div>
+      <h1 class="text-2xl sm:text-4xl font-bold mb-1 sm:mb-2">Tasks</h1>
+      <p class="text-sm sm:text-base text-base-content/70">Manage your daily tasks</p>
     </div>
 
     <!-- Error Message -->
@@ -306,7 +221,8 @@ const {
   updateTaskStatus,
   setFilters,
   clearFilters: clearTaskFilters,
-  generateDailyTasks
+  generateDailyTasks,
+  generateTasksFromPhase
 } = useTasks()
 
 const {
@@ -314,8 +230,6 @@ const {
   fetchPhases
 } = useProjects()
 
-const showFilters = ref(false)
-const selectedDate = ref(new Date().toISOString().split('T')[0])
 const taskModal = ref(null)
 const logoutPromptModal = ref(null)
 const selectedTask = ref(null)
@@ -337,8 +251,8 @@ const isTaskWithinTimeWindow = (task) => {
     return true
   }
   
-  // Check if task is due today (based on selected date or current date)
-  const today = selectedDate.value || new Date().toISOString().split('T')[0]
+  // Check if task is due today
+  const today = new Date().toISOString().split('T')[0]
   if (task.due_date !== today) {
     return false
   }
@@ -418,21 +332,6 @@ const orderedTasks = computed(() => {
 })
 
 // Methods
-const handleDateChange = () => {
-  setFilters({ date: selectedDate.value })
-  loadTasks()
-}
-
-const applyFilters = () => {
-  loadTasks()
-}
-
-const clearFilters = () => {
-  clearTaskFilters()
-  selectedDate.value = new Date().toISOString().split('T')[0]
-  loadTasks()
-}
-
 const loadTasks = async () => {
   const options = {}
   if (filters.value.status) options.status = filters.value.status
@@ -678,7 +577,18 @@ const advanceProjectPhase = async (task) => {
       if (result.error) {
         throw result.error
       }
-      showSuccess(`Project advanced to phase: ${nextPhase.name}`)
+      
+      // Immediately generate tasks for the new phase
+      const today = new Date().toISOString().split('T')[0]
+      const generateResult = await generateTasksFromPhase(task.project_id, nextPhase.id, today)
+      
+      if (generateResult.error) {
+        console.error('Error generating tasks for new phase:', generateResult.error)
+        showError('Project advanced but failed to generate tasks: ' + generateResult.error.message)
+      } else {
+        const taskCount = generateResult.data?.length || 0
+        showSuccess(`Project advanced to phase: ${nextPhase.name}. Generated ${taskCount} task(s).`)
+      }
     }
     
     // Clear cache and reload tasks to reflect updated project info
@@ -724,7 +634,6 @@ let refreshInterval = null
 
 // Initialize
 onMounted(async () => {
-  setFilters({ date: selectedDate.value })
   await loadTasks()
   await checkTemplatePhaseCounts()
   await fetchNextPhaseDescriptions()
