@@ -13,3 +13,6 @@ ALTER TABLE jobs
 COMMENT ON COLUMN phases.requires_sequential IS 'If true, tasks in this phase must be completed in order';
 COMMENT ON COLUMN jobs.requires_sequential IS 'If true, tasks in this job must be completed in order';
 
+
+
+
