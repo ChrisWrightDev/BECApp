@@ -175,6 +175,8 @@ Where:
 
 The signature is keyed with the `OPS_WEBHOOK_SECRET` environment variable.
 
+**IMPORTANT**: `OPS_WEBHOOK_SECRET` is **required**. If it is not set, the edge function will refuse to send unsigned requests, set the message `agent_status='error'`, log the error, and return 500.
+
 **Verification example (Node.js)**:
 ```javascript
 const crypto = require('crypto')
@@ -434,29 +436,33 @@ supabase secrets set \
 
 ### Sender Role Enforcement
 
-**Current implementation**: `sender_role` is enforced via RLS policies:
+**Server-side validation**: `sender_role` is strictly enforced via RLS policies:
+- The insert policy checks `sender_id = auth.uid()`
 - The insert policy checks `sender_role in ('mike','chris')`
-- The column grant does not include `agent_status`, so clients cannot forge it
-- The `sender_id` must match `auth.uid()`
+- **The insert policy validates sender_role against the user's email**:
+  ```sql
+  sender_role = case lower(auth.jwt()->>'email')
+    when 'chrismwright@yahoo.com' then 'chris'
+    when 'oceanviews@cox.net' then 'mike'
+    else null
+  end
+  ```
+- The column grant excludes `agent_status`, `read_at`, `agent_processed_at`, and `created_at` to prevent forgery
 
-**Email-to-role mapping**: The chat UI maps emails to roles:
+**Email-to-role mapping**: The mapping exists in **two places** and must be kept in sync:
+
+1. **Migration** (`supabase/migrations/20260928170100_phase1_messaging.sql`):
+   - RLS policy WITH CHECK clause (server-side validation)
+
+2. **UI Config** (`app/utils/chatConfig.js`):
+   - `EMAIL_TO_SENDER_ROLE` object (client-side UI)
+
+**Current mappings**:
 - `chrismwright@yahoo.com` → `chris`
 - `oceanviews@cox.net` → `mike`
-- Other users can view messages but cannot send (UI enforced, RLS enforced)
+- Other users can view messages but cannot send (UI disabled, RLS blocks attempts)
 
-**Future enhancement**: Server-side validation of `sender_role` vs. email could be added to the insert policy, e.g.:
-```sql
-WITH CHECK (
-  sender_id = auth.uid()
-  AND sender_role IN ('mike', 'chris')
-  AND (
-    (sender_role = 'mike' AND lower(auth.jwt()->>'email') = 'oceanviews@cox.net')
-    OR (sender_role = 'chris' AND lower(auth.jwt()->>'email') = 'chrismwright@yahoo.com')
-  )
-)
-```
-
-This was omitted for simplicity, as both current users are admins and the UI enforces correct mapping. If needed, add this check in a future migration.
+**IMPORTANT**: When adding or changing user mappings, update **both** the migration and `chatConfig.js`.
 
 ## Rollback
 

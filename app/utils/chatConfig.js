@@ -1,5 +1,7 @@
 // Chat configuration: map user emails to sender roles
-// This is the SINGLE source of truth for sender_role mapping
+// IMPORTANT: Keep this mapping in sync with the RLS policy in:
+// supabase/migrations/20260928170100_phase1_messaging.sql
+// (search for "case lower(auth.jwt()->>'email')")
 
 export const EMAIL_TO_SENDER_ROLE = {
   'chrismwright@yahoo.com': 'chris',

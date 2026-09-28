@@ -6,6 +6,9 @@
 -- communicate with an ops agent. Does NOT touch finance tables, orders,
 -- blog_posts, clownfish, hatch_batches, or any existing objects.
 -- Rollback SQL is at the bottom of this file (commented out).
+--
+-- IMPORTANT: The email-to-sender_role mapping in the RLS insert policy
+-- MUST be kept in sync with app/utils/chatConfig.js
 -- =====================================================================
 
 begin;
@@ -60,6 +63,8 @@ create policy "Authenticated users can read all messages"
 -- Client cannot forge agent_status, read_at, agent_processed_at, or created_at
 grant insert (thread, sender_role, sender_id, body, attachments, reply_to) on public.messages to authenticated;
 
+-- Insert policy: tie sender_role to email so Mike can't post as Chris
+-- IMPORTANT: Keep this mapping in sync with app/utils/chatConfig.js
 create policy "Users can insert messages as themselves"
   on public.messages
   for insert
@@ -67,6 +72,11 @@ create policy "Users can insert messages as themselves"
   with check (
     sender_id = (select auth.uid())
     and sender_role in ('mike','chris')
+    and sender_role = case lower(auth.jwt()->>'email')
+      when 'chrismwright@yahoo.com' then 'chris'
+      when 'oceanviews@cox.net' then 'mike'
+      else null
+    end
   );
 
 -- authenticated: UPDATE read_at only

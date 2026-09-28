@@ -114,14 +114,20 @@ serve(async (req) => {
       'X-BEC-Timestamp': timestamp
     }
 
-    // Add HMAC signature if OPS_WEBHOOK_SECRET is set
-    if (OPS_WEBHOOK_SECRET) {
-      const signaturePayload = `${timestamp}.${rawBody}`
-      const signature = await hmacSHA256(signaturePayload, OPS_WEBHOOK_SECRET)
-      headers['X-BEC-Signature'] = signature
-    } else {
-      console.warn('OPS_WEBHOOK_SECRET not set; skipping HMAC signature (insecure)')
+    // OPS_WEBHOOK_SECRET is required - fail if not set
+    if (!OPS_WEBHOOK_SECRET) {
+      console.error('OPS_WEBHOOK_SECRET not configured; refusing to send unsigned request')
+      await supabase
+        .from('messages')
+        .update({ agent_status: 'error' })
+        .eq('id', message_id)
+      return new Response('OPS_WEBHOOK_SECRET not configured', { status: 500 })
     }
+
+    // Generate HMAC signature
+    const signaturePayload = `${timestamp}.${rawBody}`
+    const signature = await hmacSHA256(signaturePayload, OPS_WEBHOOK_SECRET)
+    headers['X-BEC-Signature'] = signature
 
     // Add configurable sender key header if OPS_AGENT_WEBHOOK_KEY is set
     if (OPS_AGENT_WEBHOOK_KEY) {
