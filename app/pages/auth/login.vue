@@ -82,81 +82,9 @@ const showPassword = ref(false)
 
 const { signIn } = useAuth()
 const { recordLogin } = useSessions()
-const { generateTasksByCategory, generateRegularTasks } = useTasks()
-const supabase = useSupabaseClient()
+// PHASE 2: Task generation disabled - ops agent now writes checklists to checklist_days/checklist_items
+// const { generateTasksByCategory, generateRegularTasks } = useTasks()
 const router = useRouter()
-
-// Check if we're in the middle of a shift (Open Shop completed, Close Up Shop pending)
-const isMidShift = async (date) => {
-  try {
-    // Get all active jobs
-    const { data: activeJobs } = await supabase
-      .from('jobs')
-      .select('id, name')
-      .eq('status', 'active')
-
-    if (!activeJobs || activeJobs.length === 0) {
-      return false
-    }
-
-    // Find Open Shop and Close Up Shop jobs
-    const openShopKeywords = ['open shop', 'open', 'start']
-    const closeShopKeywords = ['close shop', 'close up shop', 'close', 'end', 'shutdown']
-    
-    const openShopJobs = activeJobs.filter(job => {
-      const jobNameLower = job.name.toLowerCase()
-      return openShopKeywords.some(keyword => jobNameLower.includes(keyword))
-    })
-    
-    const closeShopJobs = activeJobs.filter(job => {
-      const jobNameLower = job.name.toLowerCase()
-      return closeShopKeywords.some(keyword => jobNameLower.includes(keyword))
-    })
-
-    if (openShopJobs.length === 0 || closeShopJobs.length === 0) {
-      return false // Can't determine shift status without both jobs
-    }
-
-    // Check if Open Shop tasks are completed
-    const openShopJobIds = openShopJobs.map(j => j.id)
-    const { data: openShopTasks } = await supabase
-      .from('tasks')
-      .select('id, status')
-      .in('job_id', openShopJobIds)
-      .eq('due_date', date)
-
-    if (!openShopTasks || openShopTasks.length === 0) {
-      return false // No Open Shop tasks exist, not mid-shift
-    }
-
-    const allOpenShopCompleted = openShopTasks.every(task => task.status === 'completed')
-    if (!allOpenShopCompleted) {
-      return false // Open Shop not completed, not mid-shift
-    }
-
-    // Check if Close Up Shop tasks are pending
-    const closeShopJobIds = closeShopJobs.map(j => j.id)
-    const { data: closeShopTasks } = await supabase
-      .from('tasks')
-      .select('id, status')
-      .in('job_id', closeShopJobIds)
-      .eq('due_date', date)
-
-    if (!closeShopTasks || closeShopTasks.length === 0) {
-      return false // No Close Shop tasks exist, not mid-shift
-    }
-
-    const hasPendingCloseShop = closeShopTasks.some(task => 
-      task.status === 'pending' || task.status === 'in_progress'
-    )
-
-    // Mid-shift if Open Shop is completed AND Close Shop has pending tasks
-    return hasPendingCloseShop
-  } catch (err) {
-    console.error('Error checking mid-shift status:', err)
-    return false // On error, allow task generation
-  }
-}
 
 const handleLogin = async () => {
   error.value = ''
@@ -175,31 +103,13 @@ const handleLogin = async () => {
       // Record login time for payroll
       await recordLogin()
       
-      // Wait a tick to ensure state is updated
-      await nextTick()
+      // PHASE 2: Task generation disabled - ops agent now writes daily checklists
+      // Workers simply log in and view the published checklist at /checklist
+      // The old task generation logic (generateTasksByCategory, generateRegularTasks)
+      // has been removed; tasks table remains readable but frozen.
       
-      // Check if we're logging in mid-shift
-      const today = new Date().toISOString().split('T')[0]
-      const midShift = await isMidShift(today)
-      
-      if (midShift) {
-        // User is logging in mid-shift - don't generate tasks
-        // Just navigate to chat (default landing page)
-        await router.push('/chat')
-      } else {
-        // Normal login - generate tasks in the correct order
-        // 1. Generate "Open Shop" tasks
-        await generateTasksByCategory('open_shop', today)
-        
-        // 2. Generate all regular daily tasks (excluding Open Shop and Close Up Shop)
-        await generateRegularTasks(today)
-        
-        // 3. Generate "Close Up Shop" tasks
-        await generateTasksByCategory('close_shop', today)
-        
-        // Navigate to chat (default landing page)
-        await router.push('/chat')
-      }
+      // Navigate to chat (Phase 1 default landing page)
+      await router.push('/chat')
     }
   } catch (err) {
     error.value = err.message || 'An error occurred during login'

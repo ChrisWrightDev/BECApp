@@ -9,6 +9,7 @@
           </div>
           <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
             <li><NuxtLink to="/chat" @click="closeMobileMenu">Messages</NuxtLink></li>
+            <li><NuxtLink to="/checklist" @click="closeMobileMenu">Checklist</NuxtLink></li>
             <li><NuxtLink to="/" @click="closeMobileMenu">Tasks</NuxtLink></li>
             <li><NuxtLink to="/projects" @click="closeMobileMenu">Projects</NuxtLink></li>
             <li><NuxtLink to="/pairs" @click="closeMobileMenu">Mated Pairs</NuxtLink></li>
@@ -23,6 +24,7 @@
       <div class="navbar-center hidden lg:flex">
         <ul class="menu menu-horizontal px-1">
           <li><NuxtLink to="/chat">Messages</NuxtLink></li>
+          <li><NuxtLink to="/checklist">Checklist</NuxtLink></li>
           <li><NuxtLink to="/">Tasks</NuxtLink></li>
           <li><NuxtLink to="/projects">Projects</NuxtLink></li>
           <li><NuxtLink to="/pairs">Mated Pairs</NuxtLink></li>
