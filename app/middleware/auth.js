@@ -4,21 +4,22 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     return
   }
 
-  // Skip if already going to login page
-  if (to.path === '/auth/login' || to.path === '/auth/callback') {
+  // Skip if already going to auth pages
+  if (to.path === '/auth/login' || to.path === '/auth/callback' || to.path === '/auth/reset-password' || to.path === '/auth/update-password') {
     return
   }
 
   const supabase = useSupabaseClient()
-  const { user, getSession } = useAuth()
+  const { user, getSession, sessionInitialized } = useAuth()
 
-  // First check if user is already set (fast path)
-  if (user.value) {
+  // Fast path: if user is already authenticated and session is initialized
+  if (user.value && sessionInitialized.value) {
     return
   }
 
-  // If not, check session directly from Supabase
+  // Wait for session restoration on cold start
   try {
+    // Get the current session from Supabase (this will use refresh token if needed)
     const { data: { session }, error } = await supabase.auth.getSession()
     
     if (error) {
@@ -26,20 +27,20 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
       return navigateTo('/auth/login')
     }
 
-    // If we have a session, update user state via getSession (which handles readonly properly)
+    // If we have a valid session, update the auth state
     if (session?.user) {
-      // Call getSession to update state properly (it handles the readonly refs internally)
+      // Update auth composable state
       await getSession()
-      // Verify user was set after getSession
+      
+      // Verify user was set after session restoration
       if (user.value) {
         return
       }
     }
 
-    // No session found, redirect to login
-    if (!session) {
-      return navigateTo('/auth/login')
-    }
+    // No valid session found, redirect to login with return path
+    const redirectPath = to.fullPath !== '/' ? `?redirect=${encodeURIComponent(to.fullPath)}` : ''
+    return navigateTo(`/auth/login${redirectPath}`)
   } catch (error) {
     console.error('Middleware auth exception:', error)
     return navigateTo('/auth/login')

@@ -50,12 +50,22 @@ export default defineNuxtPlugin({
     throw new Error('Invalid SUPABASE_URL format. It must be a valid URL (e.g., https://your-project.supabase.co)')
   }
 
+  // Get storage preference (default to localStorage for persistent sessions)
+  const getStorage = () => {
+    if (process.client) {
+      const storagePreference = localStorage.getItem('supabase.auth.storage')
+      return storagePreference === 'session' ? sessionStorage : localStorage
+    }
+    return undefined
+  }
+
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
-      flowType: 'pkce'
+      flowType: 'pkce',
+      storage: getStorage()
     },
     global: {
       headers: {
@@ -63,6 +73,26 @@ export default defineNuxtPlugin({
       }
     }
   })
+
+  // Refresh session on visibility change (when app comes back to foreground)
+  if (process.client) {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session) {
+            // Trigger a silent refresh to ensure token is fresh
+            await supabase.auth.refreshSession()
+          }
+        } catch (error) {
+          console.warn('Failed to refresh session on visibility change:', error)
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleVisibilityChange)
+  }
 
     // Provide Supabase client to the app
     return {
