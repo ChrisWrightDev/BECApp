@@ -93,8 +93,7 @@
               </div>
               <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow">
                 <li><a @click="openPairModal(pair)">Edit</a></li>
-                <li><a @click="openHatchModal(pair)">Add Clutch</a></li>
-                <li><a @click="viewHatches(pair)" class="text-info">View Clutches</a></li>
+                <li><a @click="viewHatches(pair)" class="text-info">View Legacy Clutches</a></li>
                 <li><a @click="deletePairConfirm(pair)" class="text-error">Delete</a></li>
               </ul>
             </div>
@@ -114,7 +113,7 @@
             <div v-if="pairHatches(pair.id).length > 0" class="flex items-center gap-2">
               <Icon name="mdi:egg" class="w-3 h-3 sm:w-4 sm:h-4 text-base-content/50 flex-shrink-0" />
               <span class="text-xs sm:text-sm text-base-content/70">
-                {{ pairHatches(pair.id).length }} clutch{{ pairHatches(pair.id).length !== 1 ? 'es' : '' }}
+                {{ pairHatches(pair.id).length }} clutch{{ pairHatches(pair.id).length !== 1 ? 'es' : '' }} (legacy)
               </span>
             </div>
           </div>
@@ -127,13 +126,6 @@
             <span class="badge badge-sm sm:badge-md" :class="getStatusBadgeClass(pair.status)">
               {{ pair.status }}
             </span>
-            <button
-              @click="openHatchModal(pair)"
-              class="btn btn-primary btn-xs sm:btn-sm"
-            >
-              <Icon name="mdi:plus" class="w-3 h-3 sm:w-4 sm:h-4" />
-              <span class="hidden sm:inline">Clutch</span>
-            </button>
           </div>
         </div>
       </div>
@@ -255,75 +247,18 @@
       </form>
     </dialog>
 
-    <!-- Create/Edit Hatch Modal -->
-    <dialog ref="hatchModal" class="modal">
-      <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">
-          {{ editingHatch ? 'Edit Clutch' : 'Record New Clutch' }}
-        </h3>
-        <form @submit.prevent="handleHatchSubmit" class="space-y-4">
-          <div v-if="selectedPair" class="alert alert-info">
-            <Icon name="mdi:information" class="w-5 h-5" />
-            <span>Pair: {{ selectedPair.male_species }} × {{ selectedPair.female_species }}</span>
-          </div>
-
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text">Clutch Date *</span>
-            </label>
-            <input
-              v-model="hatchForm.hatch_date"
-              type="date"
-              class="input input-bordered"
-              required
-            />
-          </div>
-
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text">Quantity</span>
-            </label>
-            <input
-              v-model.number="hatchForm.quantity"
-              type="number"
-              placeholder="Enter quantity"
-              class="input input-bordered"
-              min="0"
-            />
-          </div>
-
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text">Notes</span>
-            </label>
-            <textarea
-              v-model="hatchForm.notes"
-              placeholder="Enter any notes"
-              class="textarea textarea-bordered"
-              rows="3"
-            />
-          </div>
-
-          <div class="modal-action">
-            <button type="button" @click="closeHatchModal" class="btn btn-ghost">
-              Cancel
-            </button>
-            <button type="submit" class="btn btn-primary" :disabled="submitting">
-              <span v-if="submitting" class="loading loading-spinner loading-sm"></span>
-              {{ editingHatch ? 'Update' : 'Record' }}
-            </button>
-          </div>
-        </form>
-      </div>
-      <form method="dialog" class="modal-backdrop">
-        <button @click="closeHatchModal">close</button>
-      </form>
-    </dialog>
 
     <!-- View Hatches Modal -->
     <dialog ref="hatchesViewModal" class="modal">
       <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">Clutch Records</h3>
+        <div class="alert alert-warning mb-4">
+          <Icon name="mdi:alert" class="w-5 h-5" />
+          <div class="text-sm">
+            <p class="font-semibold">Legacy Clutch Records (Read-Only)</p>
+            <p>The hatches table is deprecated. Use hatch_batches for new clutch records.</p>
+          </div>
+        </div>
+        <h3 class="font-bold text-lg mb-4">Legacy Clutch Records</h3>
         <div v-if="selectedPair" class="mb-4">
           <p class="text-sm text-base-content/70">
             Pair: <strong>{{ selectedPair.male_species }} × {{ selectedPair.female_species }}</strong>
@@ -347,18 +282,7 @@
               </div>
             </div>
             <div class="flex gap-2">
-              <button
-                @click="openHatchModal(selectedPair, hatch)"
-                class="btn btn-ghost btn-sm"
-              >
-                <Icon name="mdi:pencil" class="w-4 h-4" />
-              </button>
-              <button
-                @click="deleteHatchConfirm(hatch)"
-                class="btn btn-ghost btn-sm text-error"
-              >
-                <Icon name="mdi:delete" class="w-4 h-4" />
-              </button>
+              <span class="badge badge-sm">Read-only</span>
             </div>
           </div>
         </div>
@@ -367,13 +291,6 @@
         </div>
         <div class="modal-action">
           <button @click="closeHatchesViewModal" class="btn">Close</button>
-          <button
-            v-if="selectedPair"
-            @click="openHatchModal(selectedPair)"
-            class="btn btn-primary"
-          >
-            Add Clutch
-          </button>
         </div>
       </div>
       <form method="dialog" class="modal-backdrop">
@@ -527,23 +444,6 @@
       </form>
     </dialog>
 
-    <dialog ref="deleteHatchModal" class="modal">
-      <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">Delete Clutch</h3>
-        <p class="mb-4">Are you sure you want to delete this clutch record? This action cannot be undone.</p>
-        <div class="modal-action">
-          <button @click="closeDeleteHatchModal" class="btn btn-ghost">Cancel</button>
-          <button @click="confirmDeleteHatch" class="btn btn-error" :disabled="submitting">
-            <span v-if="submitting" class="loading loading-spinner loading-sm"></span>
-            Delete
-          </button>
-        </div>
-      </div>
-      <form method="dialog" class="modal-backdrop">
-        <button @click="closeDeleteHatchModal">close</button>
-      </form>
-    </dialog>
-
     <dialog ref="deleteTankModal" class="modal">
       <div class="modal-box">
         <h3 class="font-bold text-lg mb-4">Delete Tank</h3>
@@ -610,20 +510,16 @@ const submitting = ref(false)
 const loadingTanks = ref(false)
 
 const pairModal = ref(null)
-const hatchModal = ref(null)
 const hatchesViewModal = ref(null)
 const tankModal = ref(null)
 const tankEditModal = ref(null)
 const deletePairModal = ref(null)
-const deleteHatchModal = ref(null)
 const deleteTankModal = ref(null)
 
 const editingPair = ref(null)
-const editingHatch = ref(null)
 const editingTank = ref(null)
 const selectedPair = ref(null)
 const pairToDelete = ref(null)
-const hatchToDelete = ref(null)
 const tankToDelete = ref(null)
 
 const pairForm = ref({
@@ -632,13 +528,6 @@ const pairForm = ref({
   tank_id: null,
   paired_date: null,
   status: 'active',
-  notes: ''
-})
-
-const hatchForm = ref({
-  pair_id: null,
-  hatch_date: new Date().toISOString().split('T')[0],
-  quantity: null,
   notes: ''
 })
 
@@ -759,126 +648,6 @@ const handlePairSubmit = async () => {
   }
 }
 
-// Hatch Modal
-const openHatchModal = (pair, hatch = null) => {
-  selectedPair.value = pair
-  editingHatch.value = hatch
-  if (hatch) {
-    hatchForm.value = {
-      pair_id: pair.id,
-      hatch_date: hatch.hatch_date || new Date().toISOString().split('T')[0],
-      quantity: hatch.quantity || null,
-      notes: hatch.notes || ''
-    }
-  } else {
-    hatchForm.value = {
-      pair_id: pair.id,
-      hatch_date: new Date().toISOString().split('T')[0],
-      quantity: null,
-      notes: ''
-    }
-  }
-  hatchModal.value?.showModal()
-}
-
-const closeHatchModal = () => {
-  hatchModal.value?.close()
-  editingHatch.value = null
-  selectedPair.value = null
-}
-
-const handleHatchSubmit = async () => {
-  submitting.value = true
-  try {
-    if (editingHatch.value) {
-      const result = await updateHatch(editingHatch.value.id, hatchForm.value)
-      if (result.error) {
-        throw result.error
-      }
-      showSuccess('Clutch updated successfully')
-    } else {
-      // Create the hatch
-      const hatchResult = await createHatch(hatchForm.value)
-      if (hatchResult.error) {
-        throw hatchResult.error
-      }
-      showSuccess('Clutch created successfully')
-      
-      // Create a project from "New Clutch of Eggs" template
-      if (selectedPair.value) {
-        try {
-          // Fetch templates to find "New Clutch of Eggs"
-          await fetchTemplates()
-          const clutchTemplate = templates.value.find(t => 
-            t.name.toLowerCase().includes('new clutch') || 
-            t.name.toLowerCase().includes('clutch of eggs')
-          )
-          
-          if (clutchTemplate) {
-            // Create project name from pair and hatch info
-            const pairInfo = `${selectedPair.value.male_species || 'Unknown'} × ${selectedPair.value.female_species || 'Unknown'}`
-            const hatchDate = new Date(hatchForm.value.hatch_date).toLocaleDateString()
-            const projectName = `Clutch - ${pairInfo} (${hatchDate})`
-            
-            // Create project description with clutch details
-            let projectDescription = `Clutch from pair: ${pairInfo}\n`
-            projectDescription += `Clutch Date: ${hatchDate}\n`
-            if (hatchForm.value.quantity) {
-              projectDescription += `Quantity: ${hatchForm.value.quantity}\n`
-            }
-            if (selectedPair.value.tank_name) {
-              projectDescription += `Tank: ${selectedPair.value.tank_name}\n`
-            }
-            if (hatchForm.value.notes) {
-              projectDescription += `Notes: ${hatchForm.value.notes}`
-            }
-            
-            // Create the project
-            const projectResult = await createProject({
-              name: projectName,
-              description: projectDescription.trim(),
-              template_id: clutchTemplate.id,
-              status: 'active'
-            })
-            
-            if (projectResult.error) {
-              console.error('Error creating project from hatch:', projectResult.error)
-              // Don't fail the hatch creation if project creation fails
-              showError('Clutch created, but failed to create project: ' + projectResult.error.message)
-            } else {
-              // Generate tasks for the project
-              const hatchDateObj = new Date(hatchForm.value.hatch_date)
-              const tasksResult = await generateTasksForProject(projectResult.data.id, hatchDateObj.toISOString().split('T')[0])
-              
-              if (tasksResult.error) {
-                console.error('Error generating tasks for project:', tasksResult.error)
-                // Project was created, so just log the error
-              }
-              
-              showSuccess(`Clutch and project created successfully`)
-            }
-          } else {
-            console.warn('Template "New Clutch of Eggs" not found. Hatch created but no project was created.')
-            showSuccess('Clutch created successfully (project template not found)')
-          }
-        } catch (projectErr) {
-          console.error('Error creating project from hatch:', projectErr)
-          // Don't fail the hatch creation if project creation fails
-          showError('Clutch created, but failed to create project: ' + (projectErr.message || 'Unknown error'))
-        }
-      }
-    }
-    closeHatchModal()
-    await loadHatches()
-    await loadPairs()
-  } catch (err) {
-    console.error('Error saving hatch:', err)
-    showError('Error saving clutch: ' + (err.message || 'Unknown error'))
-  } finally {
-    submitting.value = false
-  }
-}
-
 const viewHatches = (pair) => {
   selectedPair.value = pair
   hatchesViewModal.value?.showModal()
@@ -968,33 +737,6 @@ const confirmDeletePair = async () => {
   } catch (err) {
     console.error('Error deleting pair:', err)
     showError('Error deleting pair: ' + (err.message || 'Unknown error'))
-  } finally {
-    submitting.value = false
-  }
-}
-
-const deleteHatchConfirm = (hatch) => {
-  hatchToDelete.value = hatch
-  deleteHatchModal.value?.showModal()
-}
-
-const closeDeleteHatchModal = () => {
-  deleteHatchModal.value?.close()
-  hatchToDelete.value = null
-}
-
-const confirmDeleteHatch = async () => {
-  if (!hatchToDelete.value) return
-  submitting.value = true
-  try {
-    await deleteHatch(hatchToDelete.value.id)
-      showSuccess('Clutch deleted successfully')
-    closeDeleteHatchModal()
-    await loadHatches()
-    await loadPairs()
-  } catch (err) {
-    console.error('Error deleting hatch:', err)
-    showError('Error deleting clutch: ' + (err.message || 'Unknown error'))
   } finally {
     submitting.value = false
   }
