@@ -8,23 +8,39 @@
           <p class="text-base-content/70">Update your password</p>
         </div>
 
+        <!-- Link Expired Alert -->
+        <div v-if="linkExpired" class="space-y-4">
+          <div class="alert alert-error">
+            <Icon name="mdi:alert-circle" class="w-6 h-6" />
+            <div class="flex flex-col gap-1">
+              <span class="font-medium">This reset link has expired</span>
+              <span class="text-sm">Please request a new password reset link.</span>
+            </div>
+          </div>
+          <div class="form-control">
+            <NuxtLink to="/auth/reset-password" class="btn btn-primary w-full">
+              Request New Reset Link
+            </NuxtLink>
+          </div>
+        </div>
+
         <!-- Error Alert -->
-        <div v-if="error" class="alert alert-error mb-4">
+        <div v-else-if="error" class="alert alert-error mb-4">
           <Icon name="mdi:alert-circle" class="w-6 h-6" />
           <span>{{ error }}</span>
         </div>
 
         <!-- Success Message -->
-        <div v-if="updateSuccess" class="alert alert-success mb-4">
+        <div v-else-if="updateSuccess" class="alert alert-success mb-4">
           <Icon name="mdi:check-circle" class="w-6 h-6" />
           <div class="flex flex-col gap-2">
             <span class="font-medium">Password updated successfully!</span>
-            <span class="text-sm">You can now sign in with your new password.</span>
+            <span class="text-sm">Redirecting to your dashboard...</span>
           </div>
         </div>
 
         <!-- Update Form -->
-        <form v-if="!updateSuccess" @submit.prevent="handlePasswordUpdate" class="space-y-4">
+        <form v-else-if="!linkExpired && !updateSuccess" @submit.prevent="handlePasswordUpdate" class="space-y-4">
           <!-- New Password Field -->
           <div class="form-control">
             <label class="label">
@@ -105,12 +121,6 @@
           </div>
         </form>
 
-        <!-- After Success -->
-        <div v-else class="form-control">
-          <NuxtLink to="/auth/login" class="btn btn-primary w-full">
-            Go to Login
-          </NuxtLink>
-        </div>
       </div>
     </div>
   </div>
@@ -132,6 +142,21 @@ const showConfirmPassword = ref(false)
 const loading = ref(false)
 const error = ref('')
 const updateSuccess = ref(false)
+const linkExpired = ref(false)
+
+// Check if there's a valid recovery session on mount
+onMounted(async () => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    // If no session or session type is not recovery, the link has expired
+    if (!session) {
+      linkExpired.value = true
+    }
+  } catch (err) {
+    console.error('Error checking session:', err)
+    linkExpired.value = true
+  }
+})
 
 const handlePasswordUpdate = async () => {
   error.value = ''
@@ -165,9 +190,9 @@ const handlePasswordUpdate = async () => {
     // Show success message
     updateSuccess.value = true
     
-    // Redirect to login after 2 seconds
+    // User is already signed in after password update, redirect to /chat
     setTimeout(() => {
-      router.push('/auth/login')
+      router.push('/chat')
     }, 2000)
   } catch (err) {
     error.value = err.message || 'An error occurred while updating password'

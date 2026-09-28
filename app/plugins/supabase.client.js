@@ -50,13 +50,23 @@ export default defineNuxtPlugin({
     throw new Error('Invalid SUPABASE_URL format. It must be a valid URL (e.g., https://your-project.supabase.co)')
   }
 
-  // Get storage preference (default to localStorage for persistent sessions)
-  const getStorage = () => {
-    if (process.client) {
-      const storagePreference = localStorage.getItem('supabase.auth.storage')
-      return storagePreference === 'session' ? sessionStorage : localStorage
+  // Custom storage adapter that checks preference on every call
+  const storageAdapter = {
+    getItem: (key) => {
+      const storageMode = localStorage.getItem('supabase.auth.storage')
+      const storage = storageMode === 'session' ? sessionStorage : localStorage
+      return storage.getItem(key)
+    },
+    setItem: (key, value) => {
+      const storageMode = localStorage.getItem('supabase.auth.storage')
+      const storage = storageMode === 'session' ? sessionStorage : localStorage
+      storage.setItem(key, value)
+    },
+    removeItem: (key) => {
+      const storageMode = localStorage.getItem('supabase.auth.storage')
+      const storage = storageMode === 'session' ? sessionStorage : localStorage
+      storage.removeItem(key)
     }
-    return undefined
   }
 
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -65,7 +75,7 @@ export default defineNuxtPlugin({
       autoRefreshToken: true,
       detectSessionInUrl: true,
       flowType: 'pkce',
-      storage: getStorage()
+      storage: storageAdapter
     },
     global: {
       headers: {
@@ -74,24 +84,22 @@ export default defineNuxtPlugin({
     }
   })
 
-  // Refresh session on visibility change (when app comes back to foreground)
+  // Auto-refresh on visibility change using documented pattern
   if (process.client) {
-    const handleVisibilityChange = async () => {
+    const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        try {
-          const { data: { session } } = await supabase.auth.getSession()
-          if (session) {
-            // Trigger a silent refresh to ensure token is fresh
-            await supabase.auth.refreshSession()
-          }
-        } catch (error) {
-          console.warn('Failed to refresh session on visibility change:', error)
-        }
+        supabase.auth.startAutoRefresh()
+      } else {
+        supabase.auth.stopAutoRefresh()
       }
     }
 
     document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('focus', handleVisibilityChange)
+    
+    // Start auto-refresh if page is currently visible
+    if (document.visibilityState === 'visible') {
+      supabase.auth.startAutoRefresh()
+    }
   }
 
     // Provide Supabase client to the app

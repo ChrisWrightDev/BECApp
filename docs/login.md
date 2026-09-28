@@ -84,10 +84,10 @@ The auth middleware (`/app/middleware/auth.js`) ensures:
 2. **Email Settings**
    - Enable email provider
    - Configure password reset email template (optional customization)
-   - Set Site URL to your production domain
-   - Add redirect URLs:
+   - **Set Site URL**: `https://bec-app.vercel.app`
+   - **Add redirect URLs** under Auth → URL Configuration:
      - `http://localhost:3000/auth/update-password` (development)
-     - `https://your-domain.com/auth/update-password` (production)
+     - `https://bec-app.vercel.app/auth/update-password` (production)
 
 3. **Password Requirements**
    - Minimum password length: 6 characters (or your preferred length)
@@ -136,8 +136,7 @@ To verify your settings are correct:
 3. Receive password reset email from Supabase
 4. Click link in email (redirects to `/auth/update-password`)
 5. Enter and confirm new password
-6. Automatically redirected to login page
-7. Sign in with new password
+6. Automatically redirected to `/chat` (user is signed in after password update)
 
 ### Email Configuration
 
@@ -179,8 +178,8 @@ Password reset emails are sent by Supabase using the configured email provider. 
 
 ### Production
 
-- Configure production domain as Supabase Site URL
-- Add production URLs to redirect whitelist
+- **Site URL**: `https://bec-app.vercel.app`
+- **Redirect URL**: `https://bec-app.vercel.app/auth/update-password` (must be added to Supabase Auth → URL Configuration)
 - Use real email provider for password resets
 - Consider rate limiting for login attempts
 

@@ -118,7 +118,8 @@ definePageMeta({
 
 const route = useRoute()
 const router = useRouter()
-const supabase = useSupabaseClient()
+const { signIn } = useAuth()
+const { recordLogin } = useSessions()
 
 // Form state
 const email = ref('')
@@ -142,14 +143,26 @@ const handleLogin = async () => {
   loading.value = true
 
   try {
-    // Update storage option before sign in based on checkbox
-    const storageKey = keepSignedIn.value ? 'local' : 'session'
+    // Set storage preference BEFORE signing in
+    const storageMode = keepSignedIn.value ? 'local' : 'session'
+    const previousMode = localStorage.getItem('supabase.auth.storage')
+    localStorage.setItem('supabase.auth.storage', storageMode)
     
-    // Sign in with Supabase
-    const { data, error: authError } = await supabase.auth.signInWithPassword({
-      email: email.value,
-      password: password.value
-    })
+    // If preference changed, clear auth keys from the other storage
+    if (previousMode && previousMode !== storageMode) {
+      const otherStorage = storageMode === 'session' ? localStorage : sessionStorage
+      const keysToRemove = []
+      for (let i = 0; i < otherStorage.length; i++) {
+        const key = otherStorage.key(i)
+        if (key && key.startsWith('sb-')) {
+          keysToRemove.push(key)
+        }
+      }
+      keysToRemove.forEach(key => otherStorage.removeItem(key))
+    }
+    
+    // Sign in using composable so state is set before navigating
+    const { data, error: authError } = await signIn(email.value, password.value)
     
     if (authError) {
       error.value = authError.message || 'Invalid email or password'
@@ -158,23 +171,20 @@ const handleLogin = async () => {
     }
 
     if (data?.user) {
-      // Store the storage preference
-      if (keepSignedIn.value) {
-        localStorage.setItem('supabase.auth.storage', 'local')
-      } else {
-        localStorage.setItem('supabase.auth.storage', 'session')
-      }
-
       // Record login time for payroll
       try {
-        const { recordLogin } = useSessions()
         await recordLogin()
       } catch (sessionError) {
         console.warn('Failed to record login session:', sessionError)
       }
       
-      // Navigate to redirect URL or default to /chat
-      const redirectTo = route.query.redirect?.toString() || '/chat'
+      // Validate redirect to prevent open redirect vulnerability
+      let redirectTo = '/chat'
+      const redirectParam = route.query.redirect?.toString()
+      if (redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')) {
+        redirectTo = redirectParam
+      }
+      
       await router.push(redirectTo)
     }
   } catch (err) {
