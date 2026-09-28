@@ -184,8 +184,8 @@ const handleLogin = async () => {
       
       if (midShift) {
         // User is logging in mid-shift - don't generate tasks
-        // Just navigate to dashboard
-        await router.push('/')
+        // Just navigate to chat (default landing page)
+        await router.push('/chat')
       } else {
         // Normal login - generate tasks in the correct order
         // 1. Generate "Open Shop" tasks
@@ -197,8 +197,8 @@ const handleLogin = async () => {
         // 3. Generate "Close Up Shop" tasks
         await generateTasksByCategory('close_shop', today)
         
-        // Navigate to dashboard
-      await router.push('/')
+        // Navigate to chat (default landing page)
+        await router.push('/chat')
       }
     }
   } catch (err) {
