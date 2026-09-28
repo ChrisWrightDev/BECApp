@@ -4,6 +4,7 @@ export const useMessages = () => {
   const { showError } = useNotifications()
 
   const messages = useState('messages', () => [])
+  const optimisticMessages = useState('optimisticMessages', () => [])
   const loading = useState('messagesLoading', () => false)
   const sending = useState('messagesSending', () => false)
 
@@ -34,6 +35,103 @@ export const useMessages = () => {
     } finally {
       loading.value = false
     }
+  }
+
+  /**
+   * Fetch messages newer than a given timestamp
+   * @param {string} thread - Thread name
+   * @param {string} afterTimestamp - ISO timestamp to fetch messages after
+   */
+  const fetchNewMessages = async (thread = 'ops', afterTimestamp) => {
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('thread', thread)
+        .gt('created_at', afterTimestamp)
+        .order('created_at', { ascending: true })
+
+      if (error) throw error
+
+      return { data: data || [], error: null }
+    } catch (error) {
+      console.error('Error fetching new messages:', error)
+      return { data: [], error }
+    }
+  }
+
+  /**
+   * Add a message to the list (dedupe by id, keep sorted by created_at)
+   * @param {Object} msg - Message object with id and created_at
+   */
+  const addMessage = (msg) => {
+    if (!msg.id) return // Only add messages with real IDs
+    
+    // Check if it already exists
+    const exists = messages.value.some(m => m.id === msg.id)
+    if (exists) return
+    
+    // Add and sort by created_at
+    messages.value = [...messages.value, msg].sort((a, b) => {
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    })
+  }
+
+  /**
+   * Update an existing message
+   * @param {Object} msg - Updated message object with id
+   */
+  const updateMessage = (msg) => {
+    const index = messages.value.findIndex(m => m.id === msg.id)
+    if (index !== -1) {
+      messages.value = [
+        ...messages.value.slice(0, index),
+        msg,
+        ...messages.value.slice(index + 1)
+      ]
+    }
+  }
+
+  /**
+   * Add an optimistic message (before server confirms)
+   * @param {Object} msg - Message object with tempId
+   */
+  const addOptimisticMessage = (msg) => {
+    if (!msg.tempId) return
+    optimisticMessages.value = [...optimisticMessages.value, msg]
+  }
+
+  /**
+   * Replace optimistic message with real message
+   * @param {string} tempId - Temporary ID of optimistic message
+   * @param {Object} msg - Real message from server
+   */
+  const replaceOptimistic = (tempId, msg) => {
+    // Remove optimistic
+    optimisticMessages.value = optimisticMessages.value.filter(m => m.tempId !== tempId)
+    // Add real message
+    addMessage(msg)
+  }
+
+  /**
+   * Mark an optimistic message as failed
+   * @param {string} tempId - Temporary ID of optimistic message
+   */
+  const markOptimisticFailed = (tempId) => {
+    const msg = optimisticMessages.value.find(m => m.tempId === tempId)
+    if (msg) {
+      msg.sendFailed = true
+      // Trigger reactivity
+      optimisticMessages.value = [...optimisticMessages.value]
+    }
+  }
+
+  /**
+   * Remove an optimistic message (for retry)
+   * @param {string} tempId - Temporary ID of optimistic message
+   */
+  const removeOptimistic = (tempId) => {
+    optimisticMessages.value = optimisticMessages.value.filter(m => m.tempId !== tempId)
   }
 
   /**
@@ -132,9 +230,17 @@ export const useMessages = () => {
 
   return {
     messages: readonly(messages),
+    optimisticMessages: readonly(optimisticMessages),
     loading: readonly(loading),
     sending: readonly(sending),
     fetchMessages,
+    fetchNewMessages,
+    addMessage,
+    updateMessage,
+    addOptimisticMessage,
+    replaceOptimistic,
+    markOptimisticFailed,
+    removeOptimistic,
     sendMessage,
     markMessagesAsRead,
     subscribeToMessages,
