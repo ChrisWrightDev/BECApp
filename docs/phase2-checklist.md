@@ -14,6 +14,14 @@ Phase 2 replaces browser-side daily task generation with a database-backed check
 
 **Migration:** `supabase/migrations/20260928172351_phase2_checklist.sql`
 
+**Security Fix:**
+- Added `restrict_checklist_item_updates()` BEFORE UPDATE trigger on `checklist_items`
+- Enforces column-level restrictions via trigger (not column grants)
+- Why: Supabase grants ALL on public tables to `authenticated` by default
+- Column-level grants cannot separate admins from workers (both are `authenticated`)
+- Trigger allows service role/SQL editor full access, admins full access, workers only done/done_at/done_by/note/value_text
+- Raises exception (errcode 42501) if workers try to update structure/metadata columns
+
 ### 2. Disabled Task Generation
 
 **File:** `app/pages/auth/login.vue`
@@ -25,7 +33,7 @@ Phase 2 replaces browser-side daily task generation with a database-backed check
 - `isMidShift(date)` function - Mid-shift detection logic removed
 
 **Impact:**
-- Workers now simply log in and are redirected to the dashboard
+- Workers now simply log in and are redirected to `/chat` (Phase 1 messaging page)
 - No tasks are auto-created in the `tasks` table
 - The old tasks pages (`/tasks`, `/tasks/calendar`) remain readable but frozen
 - Admin manual task generation buttons still work but are deprecated
@@ -35,7 +43,7 @@ Phase 2 replaces browser-side daily task generation with a database-backed check
 **Files:**
 - `app/pages/checklist.vue` - Main checklist screen
 - `app/composables/useChecklist.js` - Checklist data management
-- `app/layouts/default.vue` - Added "Checklist" nav item (first in list)
+- `app/layouts/default.vue` - Added "Messages" and "Checklist" nav items (in that order)
 
 **Features:**
 - Mobile-optimized with large tap targets
@@ -46,6 +54,14 @@ Phase 2 replaces browser-side daily task generation with a database-backed check
 - Value inputs for temperature checks and other measured tasks
 - Optional notes per item
 - Tank and batch associations displayed as badges
+
+### 4. Integration with Phase 1
+
+This branch merges Phase 1 (Messaging System):
+- Login redirects to `/chat` (not `/`)
+- Navigation shows: Messages → Checklist → Tasks → Projects → Mated Pairs → Admin
+- Phase 1 migration (`20260928170100_phase1_messaging.sql`) included
+- Messages composable and chat page available
 
 ## Data Contract for Operations Agent
 
@@ -276,6 +292,85 @@ Open the app on a test device:
 5. Add a note to an item
 6. Verify realtime updates (open on two devices)
 
+### 6. Test Security Trigger (Critical)
+
+After migration is applied, test the `restrict_checklist_item_updates()` trigger:
+
+**As a worker (non-admin authenticated user):**
+
+```sql
+-- Get a test item ID
+SELECT id, title, done FROM checklist_items LIMIT 1;
+-- Example result: id = '123e4567-...'
+
+-- Test 1: Try to update title (should FAIL with error 42501)
+UPDATE checklist_items 
+SET title = 'Hacked title' 
+WHERE id = '123e4567-...';
+-- Expected: ERROR: Workers may only update done, done_at, done_by, note, and value_text columns
+
+-- Test 2: Try to update block (should FAIL)
+UPDATE checklist_items 
+SET block = 'evening' 
+WHERE id = '123e4567-...';
+-- Expected: ERROR: Workers may only update done, done_at, done_by, note, and value_text columns
+
+-- Test 3: Update allowed columns (should SUCCEED)
+UPDATE checklist_items 
+SET done = true, note = 'Test note', value_text = '78.5'
+WHERE id = '123e4567-...';
+-- Expected: UPDATE 1 (success)
+```
+
+**As an admin:**
+
+```sql
+-- Set your JWT to an admin user's token
+-- Test: Update title (should SUCCEED)
+UPDATE checklist_items 
+SET title = 'Updated by admin' 
+WHERE id = '123e4567-...';
+-- Expected: UPDATE 1 (success)
+```
+
+**As service role (SQL Editor):**
+
+```sql
+-- In Supabase SQL Editor (bypasses RLS, not authenticated role)
+UPDATE checklist_items 
+SET title = 'Updated by service role', block = 'afternoon'
+WHERE id = '123e4567-...';
+-- Expected: UPDATE 1 (success)
+```
+
+**Via the App (worker account):**
+
+1. Log in as a worker (non-admin)
+2. Open browser DevTools Console
+3. Try to update a restricted column via Supabase client:
+```javascript
+const { data, error } = await supabase
+  .from('checklist_items')
+  .update({ title: 'Hacked via app' })
+  .eq('id', 'some-item-id')
+  .select()
+
+// Should see: error with code 42501
+console.log(error)
+```
+
+4. Try to update allowed columns:
+```javascript
+const { data, error } = await supabase
+  .from('checklist_items')
+  .update({ done: true, note: 'Test note' })
+  .eq('id', 'some-item-id')
+  .select()
+
+// Should succeed
+console.log(data)
+```
+
 ## Test Plan
 
 ### Unit Tests (Manual Verification)
@@ -286,12 +381,19 @@ Open the app on a test device:
    - Triggers created
    - RLS policies active
 
-2. **RLS Policies**
+2. **RLS Policies & Security**
    - Anon: Cannot read or write anything ✓
    - Authenticated (worker): Can read published days/items ✓
    - Authenticated (worker): Can update done/value_text/note on published items ✓
    - Authenticated (worker): Cannot read draft days ✓
    - Admin: Can read/write all days and items ✓
+   - **Security trigger test (critical):**
+     - Worker attempts to UPDATE title on published item → raises exception 42501 ✓
+     - Worker attempts to UPDATE block on published item → raises exception 42501 ✓
+     - Worker attempts to UPDATE tank_id on published item → raises exception 42501 ✓
+     - Worker CAN update done, done_at, done_by, note, value_text → succeeds ✓
+     - Admin CAN update any column including title, block, etc. → succeeds ✓
+     - Service role CAN update any column → succeeds ✓
 
 3. **App Behavior**
    - Workers see "not ready yet" when no published day exists ✓
@@ -302,10 +404,11 @@ Open the app on a test device:
    - Realtime updates appear without refresh ✓
    - Optimistic updates rollback on error ✓
 
-4. **Login Flow**
-   - Workers log in and are redirected to / (not stuck generating tasks) ✓
+4. **Login Flow & Navigation**
+   - Workers log in and are redirected to /chat (Phase 1 default) ✓
    - No errors in console related to task generation ✓
    - Old task pages still work (read-only) ✓
+   - Navigation shows: Messages → Checklist → Tasks → Projects → Mated Pairs → Admin ✓
 
 5. **Mobile UX**
    - Tap targets are large enough (> 44px) ✓
@@ -354,6 +457,9 @@ begin;
 
 alter publication supabase_realtime drop table if exists public.checklist_items;
 alter publication supabase_realtime drop table if exists public.checklist_days;
+
+drop trigger if exists restrict_checklist_item_updates on public.checklist_items;
+drop function if exists public.restrict_checklist_item_updates();
 
 drop table if exists public.checklist_items cascade;
 drop table if exists public.checklist_days cascade;
