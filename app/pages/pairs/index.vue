@@ -93,8 +93,7 @@
               </div>
               <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow">
                 <li><a @click="openPairModal(pair)">Edit</a></li>
-                <li><a @click="openHatchModal(pair)">Add Clutch</a></li>
-                <li><a @click="viewHatches(pair)" class="text-info">View Clutches</a></li>
+                <li><a @click="viewHatches(pair)" class="text-info">View Legacy Clutches</a></li>
                 <li><a @click="deletePairConfirm(pair)" class="text-error">Delete</a></li>
               </ul>
             </div>
@@ -114,7 +113,7 @@
             <div v-if="pairHatches(pair.id).length > 0" class="flex items-center gap-2">
               <Icon name="mdi:egg" class="w-3 h-3 sm:w-4 sm:h-4 text-base-content/50 flex-shrink-0" />
               <span class="text-xs sm:text-sm text-base-content/70">
-                {{ pairHatches(pair.id).length }} clutch{{ pairHatches(pair.id).length !== 1 ? 'es' : '' }}
+                {{ pairHatches(pair.id).length }} clutch{{ pairHatches(pair.id).length !== 1 ? 'es' : '' }} (legacy)
               </span>
             </div>
           </div>
@@ -127,13 +126,6 @@
             <span class="badge badge-sm sm:badge-md" :class="getStatusBadgeClass(pair.status)">
               {{ pair.status }}
             </span>
-            <button
-              @click="openHatchModal(pair)"
-              class="btn btn-primary btn-xs sm:btn-sm"
-            >
-              <Icon name="mdi:plus" class="w-3 h-3 sm:w-4 sm:h-4" />
-              <span class="hidden sm:inline">Clutch</span>
-            </button>
           </div>
         </div>
       </div>
@@ -255,9 +247,16 @@
       </form>
     </dialog>
 
-    <!-- Create/Edit Hatch Modal -->
+    <!-- View Hatches Modal (Legacy - Read Only) -->
     <dialog ref="hatchModal" class="modal">
       <div class="modal-box">
+        <div class="alert alert-warning mb-4">
+          <Icon name="mdi:alert" class="w-5 h-5" />
+          <div class="text-sm">
+            <p class="font-semibold">Legacy Clutch Records</p>
+            <p>The hatches table is deprecated. Use hatch_batches for new clutch records.</p>
+          </div>
+        </div>
         <h3 class="font-bold text-lg mb-4">
           {{ editingHatch ? 'Edit Clutch' : 'Record New Clutch' }}
         </h3>
@@ -323,7 +322,14 @@
     <!-- View Hatches Modal -->
     <dialog ref="hatchesViewModal" class="modal">
       <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">Clutch Records</h3>
+        <div class="alert alert-warning mb-4">
+          <Icon name="mdi:alert" class="w-5 h-5" />
+          <div class="text-sm">
+            <p class="font-semibold">Legacy Clutch Records (Read-Only)</p>
+            <p>The hatches table is deprecated. Use hatch_batches for new clutch records.</p>
+          </div>
+        </div>
+        <h3 class="font-bold text-lg mb-4">Legacy Clutch Records</h3>
         <div v-if="selectedPair" class="mb-4">
           <p class="text-sm text-base-content/70">
             Pair: <strong>{{ selectedPair.male_species }} × {{ selectedPair.female_species }}</strong>
@@ -347,18 +353,7 @@
               </div>
             </div>
             <div class="flex gap-2">
-              <button
-                @click="openHatchModal(selectedPair, hatch)"
-                class="btn btn-ghost btn-sm"
-              >
-                <Icon name="mdi:pencil" class="w-4 h-4" />
-              </button>
-              <button
-                @click="deleteHatchConfirm(hatch)"
-                class="btn btn-ghost btn-sm text-error"
-              >
-                <Icon name="mdi:delete" class="w-4 h-4" />
-              </button>
+              <span class="badge badge-sm">Read-only</span>
             </div>
           </div>
         </div>
@@ -367,13 +362,6 @@
         </div>
         <div class="modal-action">
           <button @click="closeHatchesViewModal" class="btn">Close</button>
-          <button
-            v-if="selectedPair"
-            @click="openHatchModal(selectedPair)"
-            class="btn btn-primary"
-          >
-            Add Clutch
-          </button>
         </div>
       </div>
       <form method="dialog" class="modal-backdrop">

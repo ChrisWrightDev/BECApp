@@ -128,6 +128,16 @@
           <p class="text-sm sm:text-base">View system analytics and metrics</p>
         </div>
       </NuxtLink>
+
+      <NuxtLink to="/admin/tanks" class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
+        <div class="card-body p-4 sm:p-6">
+          <h2 class="card-title text-base sm:text-lg">
+            <Icon name="mdi:water" class="w-5 h-5 sm:w-6 sm:h-6" />
+            Tanks
+          </h2>
+          <p class="text-sm sm:text-base">Manage tank labels and bank layout</p>
+        </div>
+      </NuxtLink>
     </div>
   </div>
 </template>
