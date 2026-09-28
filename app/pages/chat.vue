@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-[calc(100vh-4rem)]">
+  <div class="flex flex-col h-[calc(100dvh-6rem)] sm:h-[calc(100dvh-8rem)]">
     <!-- Header -->
     <div class="flex-shrink-0 px-4 pt-2 pb-2 bg-base-100">
       <h1 class="text-xl font-semibold text-center">Messages</h1>
@@ -12,7 +12,7 @@
     <!-- Messages container -->
     <div
       ref="messagesContainer"
-      class="flex-1 overflow-y-auto px-4 py-2 bg-base-200"
+      class="flex-1 min-h-0 overflow-y-auto px-4 py-2 bg-base-200"
       @scroll="handleScroll"
     >
       <div v-if="loading" class="flex justify-center py-12">
@@ -69,18 +69,22 @@
     </div>
 
     <!-- Message input (only if user can send) -->
-    <div v-if="canSend" class="flex-shrink-0 bg-base-100 px-4 py-2 safe-area-bottom">
+    <div 
+      v-if="canSend" 
+      class="flex-shrink-0 bg-base-100 px-4 py-2"
+      style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom))"
+    >
       <div class="flex items-end gap-2">
         <textarea
           ref="messageInput"
           v-model="newMessageBody"
           placeholder="iMessage"
-          class="flex-1 px-4 py-2 rounded-full bg-base-200 border-0 focus:outline-none focus:ring-0 resize-none overflow-hidden text-[15px] leading-[20px]"
+          class="flex-1 px-4 py-2 rounded-full bg-base-200 border-0 focus:outline-none focus:ring-0 resize-none overflow-hidden text-base leading-[20px]"
           :disabled="sending || !canSend"
           :maxlength="4000"
-          @keydown="handleKeyDown"
           @input="adjustTextareaHeight"
           rows="1"
+          enterkeyhint="enter"
         ></textarea>
         <button
           @click="handleSendMessage"
@@ -128,6 +132,7 @@ const messageInput = ref(null)
 const newMessageBody = ref('')
 const realtimeChannel = ref(null)
 const authSubscription = ref(null)
+const viewportHandlers = ref(null)
 const isNearBottom = ref(true)
 let nextTempId = 1
 
@@ -387,14 +392,6 @@ const retryMessage = async (message) => {
   await handleSendMessage()
 }
 
-const handleKeyDown = (event) => {
-  // Shift+Enter for newline, Enter alone to send
-  if (event.key === 'Enter' && !event.shiftKey) {
-    event.preventDefault()
-    handleSendMessage()
-  }
-}
-
 const handleRealtimeInsert = (newMessage) => {
   // Remove any matching optimistic message
   const matchingOpt = optimisticMessages.value.find(opt => 
@@ -505,6 +502,21 @@ onMounted(async () => {
       setupRealtimeSubscription()
     }
   })
+  
+  // Handle iOS keyboard with visualViewport API
+  if (window.visualViewport) {
+    const handleViewportResize = () => {
+      // Scroll to keep messages visible when keyboard opens/closes
+      requestAnimationFrame(() => {
+        if (isNearBottom.value) {
+          scrollToBottom(false, true)
+        }
+      })
+    }
+    window.visualViewport.addEventListener('resize', handleViewportResize)
+    window.visualViewport.addEventListener('scroll', handleViewportResize)
+    viewportHandlers.value = { handleViewportResize }
+  }
 })
 
 onUnmounted(() => {
@@ -517,5 +529,11 @@ onUnmounted(() => {
   }
   
   document.removeEventListener('visibilitychange', handleVisibilityChange)
+  
+  // Clean up visualViewport handlers
+  if (window.visualViewport && viewportHandlers.value) {
+    window.visualViewport.removeEventListener('resize', viewportHandlers.value.handleViewportResize)
+    window.visualViewport.removeEventListener('scroll', viewportHandlers.value.handleViewportResize)
+  }
 })
 </script>
