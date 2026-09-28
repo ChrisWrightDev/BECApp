@@ -3,10 +3,9 @@
 -- Project: janwtypmneybfzeiauzt (SHARED with blueeyedclowns.com + finance)
 --
 -- DO NOT apply without review. Adds tank label/layout fields, freezes the
--- legacy hatches table, and links hatch_batches to tanks. Does NOT touch
--- existing tank rows (except optional backfill of labels that already match
--- the dashed pattern). Does NOT rename, drop or retype any existing
--- hatch_batches column, and does NOT change hatch_batches read policies.
+-- legacy hatches table. Does NOT touch existing tank rows (except backfill
+-- of labels from parseable names). Does NOT touch hatch_batches at all
+-- (that table already has parent_tank_id, hatch_tank_id, current_tank_id).
 -- Rollback SQL is at the bottom of this file (commented out).
 -- =====================================================================
 
