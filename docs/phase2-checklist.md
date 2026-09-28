@@ -14,6 +14,8 @@ Phase 2 replaces browser-side daily task generation with a database-backed check
 
 **Migration:** `supabase/migrations/20260928172351_phase2_checklist.sql`
 
+**Post-deployment hardening:** `supabase/migrations/20260928181500_harden_grants.sql` (already applied to production) revokes TRUNCATE/REFERENCES/TRIGGER privileges on checklist tables from client roles, which would bypass RLS.
+
 **Security Fix:**
 - Added `restrict_checklist_item_updates()` BEFORE UPDATE trigger on `checklist_items`
 - Enforces column-level restrictions via trigger (not column grants)
