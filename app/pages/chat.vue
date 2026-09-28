@@ -1,7 +1,7 @@
 <template>
-  <div class="flex flex-col h-[100dvh]">
+  <div class="flex flex-col h-[calc(100vh-4rem)]">
     <!-- Header -->
-    <div class="flex-shrink-0 px-4 pt-4 pb-2 bg-base-100">
+    <div class="flex-shrink-0 px-4 pt-2 pb-2 bg-base-100">
       <h1 class="text-xl font-semibold text-center">Messages</h1>
       <div v-if="!canSend" class="alert alert-info mt-2 text-xs">
         <Icon name="mdi:information-outline" class="w-4 h-4" />
@@ -26,7 +26,7 @@
       </div>
 
       <div v-else class="space-y-1">
-        <template v-for="(message, index) in displayMessagesWithGroups" :key="message.id || message.tempId">
+        <template v-for="(message, index) in displayMessages" :key="message.id || message.tempId">
           <!-- Timestamp separator -->
           <div v-if="message.showTimestamp" class="flex justify-center my-3">
             <span class="text-xs text-base-content/50 px-2 py-1">
@@ -55,12 +55,12 @@
                 <span v-if="message.sendFailed" class="ml-2 text-xs opacity-75">Tap to retry</span>
               </div>
 
-              <!-- Delivery status for last outgoing message -->
+              <!-- Status for last outgoing message -->
               <div 
-                v-if="isMyMessage(message) && index === displayMessagesWithGroups.length - 1"
+                v-if="isMyMessage(message) && index === displayMessages.length - 1"
                 class="text-[11px] text-base-content/50 px-3 mt-1"
               >
-                {{ getDeliveryStatus(message) }}
+                {{ getMessageStatus(message) }}
               </div>
             </div>
           </div>
@@ -104,7 +104,22 @@ definePageMeta({
 })
 
 const { user } = useAuth()
-const { messages, loading, sendMessage, markMessagesAsRead } = useMessages()
+const { 
+  messages, 
+  optimisticMessages, 
+  loading, 
+  sending,
+  fetchMessages,
+  fetchNewMessages,
+  addMessage,
+  updateMessage,
+  addOptimisticMessage,
+  replaceOptimistic,
+  markOptimisticFailed,
+  removeOptimistic,
+  sendMessage, 
+  markMessagesAsRead 
+} = useMessages()
 const supabase = useSupabaseClient()
 const { showError } = useNotifications()
 
@@ -112,9 +127,8 @@ const messagesContainer = ref(null)
 const messageInput = ref(null)
 const newMessageBody = ref('')
 const realtimeChannel = ref(null)
-const sending = ref(false)
+const authSubscription = ref(null)
 const isNearBottom = ref(true)
-const optimisticMessages = ref([]) // Track optimistically added messages
 let nextTempId = 1
 
 // Computed
@@ -125,15 +139,9 @@ const canSend = computed(() => canSendMessages(userEmail.value))
 // Merge real messages with optimistic ones
 const allMessages = computed(() => {
   const realMsgs = messages.value || []
-  const combined = [...realMsgs]
+  const optMsgs = optimisticMessages.value || []
   
-  // Add optimistic messages that haven't been confirmed yet
-  optimisticMessages.value.forEach(optMsg => {
-    // Only add if not already in real messages
-    if (!combined.some(m => m.id === optMsg.id)) {
-      combined.push(optMsg)
-    }
-  })
+  const combined = [...realMsgs, ...optMsgs]
   
   // Sort by created_at
   return combined.sort((a, b) => {
@@ -144,7 +152,7 @@ const allMessages = computed(() => {
 })
 
 // Add grouping and timestamp separators
-const displayMessagesWithGroups = computed(() => {
+const displayMessages = computed(() => {
   const result = []
   let lastSender = null
   let lastTime = null
@@ -152,6 +160,10 @@ const displayMessagesWithGroups = computed(() => {
   allMessages.value.forEach((message, index) => {
     const currentTime = new Date(message.created_at)
     const isGroupStart = message.sender_id !== lastSender
+    
+    // Check if this is the last message in a group
+    const nextMessage = allMessages.value[index + 1]
+    const isGroupEnd = !nextMessage || nextMessage.sender_id !== message.sender_id
     
     // Add timestamp separator if gap > 15 minutes or different day
     let showTimestamp = false
@@ -170,6 +182,7 @@ const displayMessagesWithGroups = computed(() => {
     result.push({
       ...message,
       isGroupStart,
+      isGroupEnd,
       showTimestamp,
       timestamp
     })
@@ -180,8 +193,6 @@ const displayMessagesWithGroups = computed(() => {
   
   return result
 })
-
-const displayMessages = computed(() => allMessages.value)
 
 const canSendCurrentMessage = computed(() => {
   return canSend.value && 
@@ -203,53 +214,35 @@ const getMessageBubbleClass = (message) => {
     baseClasses.push('bg-[#0B84FE] text-white')
     
     // Determine rounding based on group position
-    const messageIndex = displayMessagesWithGroups.value.findIndex(m => 
-      (m.id && m.id === message.id) || (m.tempId && m.tempId === message.tempId)
-    )
-    
-    if (messageIndex >= 0) {
-      const isLast = messageIndex === displayMessagesWithGroups.value.length - 1 ||
-        displayMessagesWithGroups.value[messageIndex + 1]?.isGroupStart
-      
-      if (message.isGroupStart && isLast) {
-        // Single message in group
-        baseClasses.push('rounded-[18px]')
-      } else if (message.isGroupStart) {
-        // First in group
-        baseClasses.push('rounded-[18px] rounded-br-[4px]')
-      } else if (isLast) {
-        // Last in group
-        baseClasses.push('rounded-[18px] rounded-br-[4px]')
-      } else {
-        // Middle of group
-        baseClasses.push('rounded-[18px] rounded-br-[4px]')
-      }
-    } else {
+    if (message.isGroupStart && message.isGroupEnd) {
+      // Single message in group
       baseClasses.push('rounded-[18px]')
+    } else if (message.isGroupStart) {
+      // First in group - full rounding
+      baseClasses.push('rounded-[18px]')
+    } else if (message.isGroupEnd) {
+      // Last in group - small tail corner on bottom-right
+      baseClasses.push('rounded-[18px] rounded-br-[4px]')
+    } else {
+      // Middle of group - reduced corners on right side
+      baseClasses.push('rounded-l-[18px] rounded-tr-[18px] rounded-br-[6px]')
     }
   } else {
     // Other users' messages: light gray in light mode, darker gray in dark mode
     baseClasses.push('bg-[#E9E9EB] text-black dark:bg-[#3A3A3C] dark:text-white')
     
-    const messageIndex = displayMessagesWithGroups.value.findIndex(m => 
-      (m.id && m.id === message.id) || (m.tempId && m.tempId === message.tempId)
-    )
-    
-    if (messageIndex >= 0) {
-      const isLast = messageIndex === displayMessagesWithGroups.value.length - 1 ||
-        displayMessagesWithGroups.value[messageIndex + 1]?.isGroupStart
-      
-      if (message.isGroupStart && isLast) {
-        baseClasses.push('rounded-[18px]')
-      } else if (message.isGroupStart) {
-        baseClasses.push('rounded-[18px] rounded-bl-[4px]')
-      } else if (isLast) {
-        baseClasses.push('rounded-[18px] rounded-bl-[4px]')
-      } else {
-        baseClasses.push('rounded-[18px] rounded-bl-[4px]')
-      }
-    } else {
+    if (message.isGroupStart && message.isGroupEnd) {
+      // Single message in group
       baseClasses.push('rounded-[18px]')
+    } else if (message.isGroupStart) {
+      // First in group - full rounding
+      baseClasses.push('rounded-[18px]')
+    } else if (message.isGroupEnd) {
+      // Last in group - small tail corner on bottom-left
+      baseClasses.push('rounded-[18px] rounded-bl-[4px]')
+    } else {
+      // Middle of group - reduced corners on left side
+      baseClasses.push('rounded-r-[18px] rounded-tl-[18px] rounded-bl-[6px]')
     }
   }
   
@@ -269,33 +262,40 @@ const formatTimestampSeparator = (date) => {
   yesterday.setDate(now.getDate() - 1)
   const isYesterday = date.toDateString() === yesterday.toDateString()
   
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  })
+  
   if (isToday) {
-    return `Today ${date.toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
-      minute: '2-digit',
-      hour12: true 
-    })}`
+    return `Today ${formatter.format(date)}`
   } else if (isYesterday) {
-    return `Yesterday ${date.toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
-      minute: '2-digit',
-      hour12: true 
-    })}`
+    return `Yesterday ${formatter.format(date)}`
   } else {
-    return date.toLocaleDateString('en-US', { 
+    const fullFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Chicago',
       month: 'short',
       day: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
       hour12: true
     })
+    return fullFormatter.format(date)
   }
 }
 
-const getDeliveryStatus = (message) => {
+const getMessageStatus = (message) => {
   if (message.sendFailed) return 'Not delivered'
   if (message.tempId && !message.id) return 'Sending…'
-  if (message.agent_status === 'replied') return 'Delivered'
+  
+  // Check agent_status for detailed status
+  if (message.agent_status === 'processing') return 'Agent is reading…'
+  if (message.agent_status === 'replied') return 'Replied'
+  if (message.agent_status === 'error') return 'Agent error'
+  if (message.agent_status === 'pending') return 'Delivered'
+  
   return 'Delivered'
 }
 
@@ -343,8 +343,8 @@ const handleSendMessage = async () => {
     sendFailed: false
   }
 
-  // Optimistic update
-  optimisticMessages.value.push(optimisticMessage)
+  // Optimistic update using composable helper
+  addOptimisticMessage(optimisticMessage)
   newMessageBody.value = ''
   
   // Reset textarea height
@@ -358,35 +358,20 @@ const handleSendMessage = async () => {
   nextTick(() => messageInput.value?.focus())
 
   // Send to server
-  sending.value = true
   const { data, error } = await sendMessage({
     thread: 'ops',
     sender_role: senderRole.value,
     sender_id: user.value.id,
     body
   })
-  sending.value = false
 
   if (error || !data) {
     // Mark as failed
-    const failedMsg = optimisticMessages.value.find(m => m.tempId === tempId)
-    if (failedMsg) {
-      failedMsg.sendFailed = true
-    }
+    markOptimisticFailed(tempId)
     showError('Failed to send message. Tap to retry.')
   } else {
-    // Replace optimistic message with real one
-    const optIndex = optimisticMessages.value.findIndex(m => m.tempId === tempId)
-    if (optIndex !== -1) {
-      optimisticMessages.value.splice(optIndex, 1)
-    }
-    
-    // Add to messages if not already there (realtime might beat us)
-    const exists = messages.value.some(m => m.id === data.id)
-    if (!exists) {
-      messages.value.push(data)
-    }
-    
+    // Replace optimistic with real message
+    replaceOptimistic(tempId, data)
     scrollToBottom()
   }
 }
@@ -395,10 +380,7 @@ const retryMessage = async (message) => {
   if (!message.sendFailed || !message.tempId) return
   
   // Remove the failed message
-  const index = optimisticMessages.value.findIndex(m => m.tempId === message.tempId)
-  if (index !== -1) {
-    optimisticMessages.value.splice(index, 1)
-  }
+  removeOptimistic(message.tempId)
   
   // Re-add as new message
   newMessageBody.value = message.body
@@ -414,39 +396,35 @@ const handleKeyDown = (event) => {
 }
 
 const handleRealtimeInsert = (newMessage) => {
-  // Remove any optimistic message that matches (by sender/body/time proximity)
-  const matchIndex = optimisticMessages.value.findIndex(opt => 
+  // Remove any matching optimistic message
+  const matchingOpt = optimisticMessages.value.find(opt => 
     opt.sender_id === newMessage.sender_id &&
     opt.body === newMessage.body &&
     Math.abs(new Date(opt.created_at).getTime() - new Date(newMessage.created_at).getTime()) < 5000
   )
-  if (matchIndex !== -1) {
-    optimisticMessages.value.splice(matchIndex, 1)
+  
+  if (matchingOpt) {
+    removeOptimistic(matchingOpt.tempId)
   }
 
-  // Add to messages if not already there
-  const exists = messages.value.some(m => m.id === newMessage.id)
-  if (!exists) {
-    messages.value.push(newMessage)
-    
-    // Auto-scroll only if near bottom or if it's from current user
-    const isFromMe = newMessage.sender_id === user.value?.id
-    scrollToBottom(true, isFromMe)
-    
-    // Mark as read if from agent/system and page is visible
-    if (['agent', 'system'].includes(newMessage.sender_role) && 
-        !newMessage.read_at && 
-        document.visibilityState === 'visible') {
-      markMessagesAsRead([newMessage.id])
-    }
+  // Add using composable helper (dedupes by id)
+  addMessage(newMessage)
+  
+  // Auto-scroll only if near bottom or if it's from current user
+  const isFromMe = newMessage.sender_id === user.value?.id
+  scrollToBottom(true, isFromMe)
+  
+  // Mark as read if from agent/system and page is visible
+  if (['agent', 'system'].includes(newMessage.sender_role) && 
+      !newMessage.read_at && 
+      document.visibilityState === 'visible') {
+    markMessagesAsRead([newMessage.id])
   }
 }
 
 const handleRealtimeUpdate = (updatedMessage) => {
-  const index = messages.value.findIndex(m => m.id === updatedMessage.id)
-  if (index !== -1) {
-    messages.value[index] = updatedMessage
-  }
+  // Use composable helper to update
+  updateMessage(updatedMessage)
 }
 
 const setupRealtimeSubscription = () => {
@@ -479,10 +457,14 @@ const setupRealtimeSubscription = () => {
     .subscribe()
 }
 
-const handleVisibilityChange = () => {
+const handleVisibilityChange = async () => {
   if (document.visibilityState === 'visible') {
-    // Resubscribe to ensure we didn't miss anything
-    setupRealtimeSubscription()
+    // Fetch any new messages we might have missed
+    const latestMessage = messages.value[messages.value.length - 1]
+    if (latestMessage) {
+      const { data: newMsgs } = await fetchNewMessages('ops', latestMessage.created_at)
+      newMsgs.forEach(msg => addMessage(msg))
+    }
     
     // Mark unread messages as read
     const unreadAgentMessages = messages.value
@@ -497,9 +479,6 @@ const handleVisibilityChange = () => {
 
 // Lifecycle
 onMounted(async () => {
-  // Fetch the useMessages composable's fetchMessages function
-  const { fetchMessages } = useMessages()
-  
   // Load messages
   await fetchMessages('ops', 200)
   scrollToBottom(false, true) // Instant scroll on initial load
@@ -520,8 +499,9 @@ onMounted(async () => {
   document.addEventListener('visibilitychange', handleVisibilityChange)
   
   // Listen for auth state changes
-  supabase.auth.onAuthStateChange((event) => {
-    if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+  authSubscription.value = supabase.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_IN') {
+      // Only resubscribe on sign in, not token refresh
       setupRealtimeSubscription()
     }
   })
@@ -531,6 +511,11 @@ onUnmounted(() => {
   if (realtimeChannel.value) {
     supabase.removeChannel(realtimeChannel.value)
   }
+  
+  if (authSubscription.value && authSubscription.value.subscription) {
+    authSubscription.value.subscription.unsubscribe()
+  }
+  
   document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>
