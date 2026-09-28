@@ -32,8 +32,14 @@ change `hatch_batches` read policies.
 (multiple null labels are allowed, but non-null labels must be unique)
 
 **Backfill:** The migration automatically backfills labels for existing tank rows
-whose `name` already exactly matches the dashed pattern `^[A-Z][0-9]+-[0-9]+$`.
+whose `name` matches either:
+- Dashed format: `^[A-Z][0-9]+-[0-9]+$` (e.g., A1-12)
+- Undashed format: `^[A-F][1-4][0-9]{1,2}$` (e.g., A112 → A1-12, F34 → F3-4)
+
+The undashed format is parsed as: system letter + single-digit row + remaining digits as tank number.
 It only sets the new columns; it does NOT modify or delete any existing tank rows.
+
+**Expected backfill count for live data:** 288 tanks (290 total - 2 unparseable: A1A and H11)
 
 ### 2. Hatches table: frozen as legacy
 
@@ -47,72 +53,58 @@ It only sets the new columns; it does NOT modify or delete any existing tank row
 
 Workers can still view legacy hatches, but only admins can create, update, or delete them.
 
-### 3. Hatch_batches: tank link columns
+### 3. Hatch_batches: NO CHANGES
 
-The migration adds two nullable columns to `hatch_batches` **if they don't already exist**:
+Phase 3 leaves `hatch_batches` completely untouched. The table already has `parent_tank_id`,
+`hatch_tank_id`, `current_tank_id`, and `transfer_from_tank_label`/`transfer_to_tank_label`
+columns for tank tracking, so adding a generic `tank_id` would be ambiguous.
 
-| Field | Type | Purpose |
-|---|---|---|
-| `tank_id` | uuid FK → `tanks(id)` ON DELETE SET NULL | Links a batch to a specific tank |
-| `tank_label` | text | Cached tank label for display (denormalized) |
+The website reads `hatch_batches` with the service role and depends on the current schema,
+so Phase 3 makes no changes to this table at all.
 
-The migration checks for existing columns first and only adds them if missing.
-It does NOT rename, drop, or retype any existing `hatch_batches` column, and does
-NOT change read policies (the website still reads with the service role).
-
-## Documented bank layout
+## Documented bank layout vs. actual tanks
 
 From the business handbook:
 
-| System | Bank Role | Rows | Tanks per Row | Total | Label Range |
+| System | Bank Role | Rows | Tanks per Row | Documented Total | Actual in DB |
 |---|---|---|---|---|---|
-| A | mated_pair | 4 | 12 | 48 | A1-1 to A4-12 |
-| B | mated_pair | 4 | 12 | 48 | B1-1 to B4-12 |
-| C | grow_out | 2 | 1 | 2 | C1-1 to C2-1 |
-| D | grow_out | 4 | 3 | 12 | D1-1 to D4-3 |
-| E | hatch | 3 | 10 | 30 | E1-1 to E3-10 |
-| F | grow_out | 3 | 4 | 12 | F1-1 to F3-4 |
-| **Total** | | | | **152** | |
+| A | mated_pair | 4 | 12 | 48 | 48 |
+| B | mated_pair | 4 | 12 | 48 | 48 |
+| C | grow_out | 2 | 1 | 2 | 48 |
+| D | grow_out | 4 | 3 | 12 | 48 |
+| E | hatch | 3 | 10 | 30 | 48 |
+| F | grow_out | 3 | 4 | 12 | 48 |
+| **Total** | | | | **152** | **288** |
 
-## Using the seed file
+**Important:** Systems A and B match the documented layout. However, systems C-F each have a full 4x12 grid (48 tanks) in the live database, which exceeds the documented layout by 136 tanks total. The migration does NOT delete or hide these extra tanks. Whether to keep, consolidate, or document them is a decision for Chris.
 
-**File:** `supabase/seed/phase3_tank_layout.sql` (NOT a migration, NOT applied automatically)
+The extra tanks in C-F may be:
+- Physical tanks that exist but weren't documented
+- Future expansion capacity
+- Historical data that should be preserved
+- Organizational decision pending
 
-This file inserts placeholder tank rows for the documented layout above. It sets:
-- `system`, `row_no`, `tank_no`, `label`, `bank_role`
-- `name = label`
-- `status = 'active'`
-- All other fields null
-
-**IMPORTANT:** The seed is derived ONLY from the documented handbook layout.
-It MUST be reviewed against the actual tank room before running.
-
-**Steps to use the seed:**
-1. Run `supabase/sql/phase3_reconcile_report.sql` to see gaps and conflicts
-2. Review the seed against the physical tank room
-3. If it matches reality, run the seed in Supabase SQL Editor
-4. The seed uses `ON CONFLICT (label) DO NOTHING`, so it won't overwrite existing tanks
+The reconciliation report identifies which of these extra tanks are referenced by `hatch_batches` or `mated_pairs`, helping Chris decide which ones are actively in use.
 
 ## Using the reconcile report
 
 **File:** `supabase/sql/phase3_reconcile_report.sql` (READ-ONLY, changes nothing)
 
-This file runs SELECT-only queries that compare:
-- Existing tank rows in the database
-- The documented bank layout from the handbook
+This file runs SELECT-only queries that compare existing tanks with the documented layout.
+It parses tank names using the same logic as the migration, so it can be run BEFORE the migration.
 
 **Reports:**
-1. Existing tanks whose names DON'T match the dashed pattern
-2. Duplicate labels (should never happen after migration)
-3. Documented layout labels that have NO corresponding tank row (gaps)
-4. Existing tanks with labels that DON'T match documented layout (extras)
-5. Summary statistics (total tanks, labels, systems, roles)
+1. **Tanks per system:** Compares actual tank counts vs. documented layout
+2. **Extras beyond documented layout:** Lists the 136 C-F tanks beyond documented rows/tanks
+3. **Unparseable tank names:** Lists names that don't match either format (A1A, H11)
+4. **Extra tank references:** For each extra tank, shows if any `hatch_batches` (parent_tank_id, hatch_tank_id, current_tank_id) or `mated_pairs` reference it
+5. **Summary statistics:** Total tanks, format breakdown, distinct systems
 
 **Usage:**
-- Run this in Supabase SQL Editor before applying the seed
-- Review each report section
-- Decide which gaps to fill and which extras to keep or fix
-- The seed file will only create missing tanks (ON CONFLICT DO NOTHING)
+- Run this in Supabase SQL Editor BEFORE applying the migration
+- Review Report 4 to see which extra tanks are actively used
+- Decide which extras to keep (they won't be deleted by the migration)
+- The migration will label all parseable tanks automatically
 
 ## Manual steps (Supabase dashboard)
 
@@ -122,15 +114,16 @@ This file runs SELECT-only queries that compare:
 
 **Steps:**
 1. **Run the reconcile report:** `supabase/sql/phase3_reconcile_report.sql`
-   - Review Report 1: non-standard tank names (decide if they need labels)
-   - Review Report 3: missing documented labels (gaps to fill)
-   - Review Report 4: labels not in documented layout (decide if they're extras or errors)
-   - Note: The migration will auto-backfill labels for existing names matching the pattern
+   - Review Report 1: tanks per system (shows 48 tanks per system vs. documented)
+   - Review Report 2: the 136 extra C-F tanks beyond documented layout
+   - Review Report 3: unparseable names (A1A, H11)
+   - Review Report 4: which extra tanks are referenced by hatch_batches or mated_pairs
+   - Decide which extra tanks to keep (the migration won't delete any)
 
 2. **Apply the migration:** `supabase/migrations/20260928174005_phase3_records.sql`
    - Copy/paste into Supabase SQL Editor
    - Click "Run"
-   - Check the output for the NOTICE line: "Backfilling labels for N existing tank(s)..."
+   - Check the output for the NOTICE line: "Backfilled labels for 0 dashed and 288 undashed tank name(s)"
    - Verify no errors
 
 3. **Verify the migration:**
@@ -151,19 +144,9 @@ This file runs SELECT-only queries that compare:
    FROM pg_policies
    WHERE tablename = 'hatches';
 
-   -- Check hatch_batches columns
-   SELECT column_name, data_type, is_nullable
-   FROM information_schema.columns
-   WHERE table_name = 'hatch_batches'
-     AND column_name IN ('tank_id', 'tank_label');
    ```
 
-4. **Optionally run the seed:** `supabase/seed/phase3_tank_layout.sql`
-   - ONLY if you've reviewed it against the physical tank room
-   - This creates placeholder rows for the documented layout
-   - Uses ON CONFLICT (label) DO NOTHING (won't overwrite existing)
-
-5. **Deploy the app:** Push and deploy the updated code
+4. **Deploy the app:** Push and deploy the updated code
    - Admins see the new Tanks page under Admin → Tanks
    - Admins can set labels and bank roles for existing tanks
    - Workers see deprecation notices on legacy hatches
@@ -172,11 +155,10 @@ This file runs SELECT-only queries that compare:
 
 ### 1. Migration applied successfully
 - [ ] No errors in SQL Editor
-- [ ] NOTICE output shows "Backfilling labels for N existing tank(s)..."
+- [ ] NOTICE output shows "Backfilled labels for 0 dashed and 288 undashed tank name(s)"
 - [ ] New columns exist on `tanks` (see verification queries above)
 - [ ] Trigger `sync_tank_label_trigger` exists
 - [ ] Hatches policies changed to admin-only writes
-- [ ] Hatch_batches has `tank_id` and `tank_label` columns
 
 ### 2. Tank label trigger works
 As an admin, test the trigger via Supabase SQL Editor or the app:
@@ -197,11 +179,12 @@ RETURNING id, name, label, system, row_no, tank_no;
 -- Expected: system = 'B', row_no = 3, tank_no = 10
 ```
 
-**Test 3: Reject mismatch**
+**Test 3: Normalize label**
 ```sql
-INSERT INTO tanks (name, label, system, row_no, tank_no, status)
-VALUES ('Test Tank 3', 'C1-1', 'D', 1, 1, 'active');
--- Expected: ERROR - "Label 'C1-1' does not match system/row/tank components (expected 'D1-1')"
+INSERT INTO tanks (name, label, status)
+VALUES ('Test Tank 3', 'c01-01', 'active')
+RETURNING label, system, row_no, tank_no;
+-- Expected: label = 'C1-1', system = 'C', row_no = 1, tank_no = 1 (normalized and uppercased)
 ```
 
 **Test 4: Update existing tank label**
@@ -252,47 +235,53 @@ The migration file ends with commented rollback SQL that:
 3. Run it in Supabase SQL Editor
 4. Revert and redeploy the app code
 
-**Note:** If the seed file was run, the rollback will NOT delete the placeholder
-tanks created by the seed. You'll need to manually delete those rows if desired.
+**Note:** The rollback will NOT delete the 290 existing tank rows. It only removes
+the new label-related columns.
 
 ## What NOT to do
 
 - ❌ Do NOT apply this migration without reviewing the reconcile report first
-- ❌ Do NOT run the seed file without verifying it against the physical tank room
-- ❌ Do NOT rename, drop, or retype any existing `hatch_batches` column
-- ❌ Do NOT change `hatch_batches` read policies (the website depends on them)
+- ❌ Do NOT touch `hatch_batches` (Phase 3 leaves it completely alone)
 - ❌ Do NOT delete or modify existing tank rows (the migration only adds columns)
 - ❌ Do NOT hardcode any tank, hatch, or count data (leave unknowns null)
+- ❌ Do NOT set `bank_role` automatically (the extra C-F tanks are a decision for Chris)
 
 ## What the migration auto-backfills
 
 The migration automatically sets the new label fields for existing tank rows whose
-`name` already exactly matches the dashed pattern `^[A-Z][0-9]+-[0-9]+$`.
+`name` matches the undashed format `^[A-F][1-4][0-9]{1,2}$`.
 
-For example, if you have a tank with `name = 'B3-10'`, the migration will:
-- Set `label = 'B3-10'`
-- Parse and set `system = 'B'`, `row_no = 3`, `tank_no = 10`
-- Leave `bank_role` null (you can set it manually later)
+For the live data with names like A11, A112, B34, F412:
+- `A112` → `label = 'A1-12'`, `system = 'A'`, `row_no = 1`, `tank_no = 12`
+- `F34` → `label = 'F3-4'`, `system = 'F'`, `row_no = 3`, `tank_no = 4`
+- `B21` → `label = 'B2-1'`, `system = 'B'`, `row_no = 2`, `tank_no = 1`
+
+For the live database:
+- 288 tanks will be backfilled (A11-A412, B11-B412, ..., F11-F412)
+- 2 tanks will be left unlabelled (A1A, H11) because they don't match the pattern
+- `bank_role` will be left NULL for all tanks (manual decision for Chris)
 
 It does NOT:
 - Modify `name` or any other existing column
 - Delete or rename any tank
-- Change tanks whose names don't match the pattern
+- Change tanks whose names don't match either pattern
 - Invent or guess data
+- Set `bank_role` automatically
 
-The NOTICE output tells you how many rows were backfilled.
+The NOTICE output tells you how many rows were backfilled: "Backfilled labels for 0 dashed and 288 undashed tank name(s)"
 
 ## Known limitations
 
-1. **No automatic tank_label sync on hatch_batches:** When you assign a `tank_id`
-   to a `hatch_batches` row, you must manually set `tank_label` if you want it
-   cached. A future migration could add a trigger for this.
+1. **Extra C-F tanks are a decision for Chris:** The migration backfills all 288
+   parseable tanks, including the 136 extras in systems C-F that exceed the
+   documented layout. The reconciliation report shows which extras are referenced
+   by hatch_batches or mated_pairs.
 
 2. **No validation of bank_role against documented layout:** The migration allows
    any tank to have any bank_role. It's up to the admin to set roles correctly.
 
-3. **No automatic detection of label changes:** If you update a tank's label,
-   you must ensure it still matches the documented layout (if applicable).
+3. **Label trigger allows any system letter:** The trigger accepts A-Z, not just A-F,
+   so H1-1 works. This accommodates the existing H11 tank after manual labeling.
 
 ## Questions?
 

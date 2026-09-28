@@ -333,12 +333,13 @@ const handleTankSubmit = async () => {
   
   submitting.value = true
   try {
+    // Convert empty strings to null and uppercase label
     const updates = {
-      label: tankForm.value.label,
-      system: tankForm.value.system,
-      row_no: tankForm.value.row_no,
-      tank_no: tankForm.value.tank_no,
-      bank_role: tankForm.value.bank_role
+      label: tankForm.value.label ? tankForm.value.label.trim().toUpperCase() : null,
+      system: tankForm.value.system || null,
+      row_no: tankForm.value.row_no ? parseInt(tankForm.value.row_no, 10) : null,
+      tank_no: tankForm.value.tank_no ? parseInt(tankForm.value.tank_no, 10) : null,
+      bank_role: tankForm.value.bank_role || null
     }
     
     const result = await updateTank(editingTank.value.id, updates)
