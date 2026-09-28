@@ -310,6 +310,8 @@ cat supabase/migrations/20260928170100_phase1_messaging.sql
 supabase db push
 ```
 
+**Note**: The post-deployment hardening migration `20260928181500_harden_grants.sql` has already been applied to production. It revokes execute privileges on `messages_set_agent_status_fn()` from public/anon/authenticated roles to prevent unauthorized execution (trigger functions do not require these privileges).
+
 ### 2. Enable pg_net Extension
 
 ```sql
