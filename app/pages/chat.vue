@@ -199,7 +199,7 @@ const getMessageBubbleClass = (message) => {
   const baseClasses = []
   
   if (isMyMessage(message)) {
-    // User's messages: blue bubble with white text (iMessage style)
+    // User's messages: blue bubble with white text (iMessage style) - same in light and dark mode
     baseClasses.push('bg-[#0B84FE] text-white')
     
     // Determine rounding based on group position
@@ -228,8 +228,8 @@ const getMessageBubbleClass = (message) => {
       baseClasses.push('rounded-[18px]')
     }
   } else {
-    // Other users' messages: light gray with black text
-    baseClasses.push('bg-[#E9E9EB] text-black')
+    // Other users' messages: light gray in light mode, darker gray in dark mode
+    baseClasses.push('bg-[#E9E9EB] text-black dark:bg-[#3A3A3C] dark:text-white')
     
     const messageIndex = displayMessagesWithGroups.value.findIndex(m => 
       (m.id && m.id === message.id) || (m.tempId && m.tempId === message.tempId)
