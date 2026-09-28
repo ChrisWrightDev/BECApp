@@ -21,7 +21,9 @@ export default defineNuxtConfig({
   },
 
   nitro: {
-    cors: true
+    cors: true,
+    // Exclude Supabase edge functions from build
+    ignore: ['supabase/functions/**']
   },
 
   app: {

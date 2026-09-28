@@ -108,8 +108,8 @@ const handleLogin = async () => {
       // The old task generation logic (generateTasksByCategory, generateRegularTasks)
       // has been removed; tasks table remains readable but frozen.
       
-      // Navigate to dashboard
-      await router.push('/')
+      // Navigate to chat (Phase 1 default landing page)
+      await router.push('/chat')
     }
   } catch (err) {
     error.value = err.message || 'An error occurred during login'

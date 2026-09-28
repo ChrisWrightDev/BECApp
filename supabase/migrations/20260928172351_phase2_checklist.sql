@@ -96,6 +96,61 @@ alter table public.checklist_items enable row level security;
 revoke all on public.checklist_days from anon;
 revoke all on public.checklist_items from anon;
 
+-- Column restriction trigger for checklist_items updates
+-- Supabase grants ALL on public tables to authenticated by default.
+-- Column-level grants don't separate admins from workers (both are authenticated).
+-- This trigger enforces that non-admins can only update specific columns.
+create or replace function public.restrict_checklist_item_updates()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  -- Allow service role and SQL editor (not authenticated/anon) to update anything
+  if current_user not in ('authenticated', 'anon') then
+    return new;
+  end if;
+
+  -- Allow admins to update anything
+  if public.is_admin(auth.uid()) then
+    return new;
+  end if;
+
+  -- Non-admins: only these columns may change
+  -- (updated_at is allowed because it's auto-updated by trigger)
+  if (
+    new.day_id is distinct from old.day_id or
+    new.block is distinct from old.block or
+    new.sort_order is distinct from old.sort_order or
+    new.title is distinct from old.title or
+    new.detail is distinct from old.detail or
+    new.category is distinct from old.category or
+    new.tank_id is distinct from old.tank_id or
+    new.tank_label is distinct from old.tank_label or
+    new.batch_id is distinct from old.batch_id or
+    new.requires_value is distinct from old.requires_value or
+    new.created_at is distinct from old.created_at
+  ) then
+    raise exception 'Workers may only update done, done_at, done_by, note, and value_text columns'
+      using errcode = '42501';
+  end if;
+
+  return new;
+end;
+$$;
+
+comment on function public.restrict_checklist_item_updates() is 
+  'Prevents non-admin workers from updating checklist item structure/metadata';
+
+revoke all on function public.restrict_checklist_item_updates() from public, anon, authenticated;
+
+drop trigger if exists restrict_checklist_item_updates on public.checklist_items;
+create trigger restrict_checklist_item_updates
+  before update on public.checklist_items
+  for each row
+  execute function public.restrict_checklist_item_updates();
+
 -- Authenticated users can SELECT published or closed days and their items
 create policy "Authenticated users can read published/closed days"
   on public.checklist_days
@@ -128,10 +183,8 @@ create policy "Admins can read all items"
   to authenticated
   using (public.is_admin(auth.uid()));
 
--- Authenticated users can UPDATE specific columns on items of published days
--- Column-level grant: done, done_at, done_by, note, value_text
-grant update (done, done_at, done_by, note, value_text) on public.checklist_items to authenticated;
-
+-- Authenticated users can UPDATE items of published days
+-- The restrict_checklist_item_updates() trigger enforces column restrictions
 create policy "Authenticated users can update completion on published items"
   on public.checklist_items
   for update
@@ -147,7 +200,6 @@ create policy "Authenticated users can update completion on published items"
     -- Enforce done_by = auth.uid() or null
     (done_by = auth.uid() or done_by is null)
     and
-    -- Can only update the allowed columns
     exists (
       select 1 from public.checklist_days d
       where d.id = checklist_items.day_id
@@ -200,12 +252,15 @@ end $$;
 commit;
 
 -- =====================================================================
--- ROLLBACK (run manually only if needed; drop tables and policies)
+-- ROLLBACK (run manually only if needed; drop tables, triggers, functions, and policies)
 -- =====================================================================
 -- begin;
 --
 -- alter publication supabase_realtime drop table if exists public.checklist_items;
 -- alter publication supabase_realtime drop table if exists public.checklist_days;
+--
+-- drop trigger if exists restrict_checklist_item_updates on public.checklist_items;
+-- drop function if exists public.restrict_checklist_item_updates();
 --
 -- drop table if exists public.checklist_items cascade;
 -- drop table if exists public.checklist_days cascade;
