@@ -1,0 +1,5 @@
+# Supabase Edge Functions configuration
+
+[functions.on-message]
+# Disable JWT verification since this function is called by pg_net with a shared secret
+verify_jwt = false
