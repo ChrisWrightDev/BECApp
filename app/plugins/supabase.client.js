@@ -50,12 +50,32 @@ export default defineNuxtPlugin({
     throw new Error('Invalid SUPABASE_URL format. It must be a valid URL (e.g., https://your-project.supabase.co)')
   }
 
+  // Custom storage adapter that checks preference on every call
+  const storageAdapter = {
+    getItem: (key) => {
+      const storageMode = localStorage.getItem('supabase.auth.storage')
+      const storage = storageMode === 'session' ? sessionStorage : localStorage
+      return storage.getItem(key)
+    },
+    setItem: (key, value) => {
+      const storageMode = localStorage.getItem('supabase.auth.storage')
+      const storage = storageMode === 'session' ? sessionStorage : localStorage
+      storage.setItem(key, value)
+    },
+    removeItem: (key) => {
+      const storageMode = localStorage.getItem('supabase.auth.storage')
+      const storage = storageMode === 'session' ? sessionStorage : localStorage
+      storage.removeItem(key)
+    }
+  }
+
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
-      flowType: 'pkce'
+      flowType: 'pkce',
+      storage: storageAdapter
     },
     global: {
       headers: {
@@ -63,6 +83,24 @@ export default defineNuxtPlugin({
       }
     }
   })
+
+  // Auto-refresh on visibility change using documented pattern
+  if (process.client) {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        supabase.auth.startAutoRefresh()
+      } else {
+        supabase.auth.stopAutoRefresh()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    // Start auto-refresh if page is currently visible
+    if (document.visibilityState === 'visible') {
+      supabase.auth.startAutoRefresh()
+    }
+  }
 
     // Provide Supabase client to the app
     return {
