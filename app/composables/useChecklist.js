@@ -55,8 +55,8 @@ export const useChecklist = () => {
 
       // Get today's date in America/Chicago timezone
       const today = new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' })
-      const [month, day, year] = today.split('/')
-      const workDate = `${year}-${month}-${day}`
+      const [month, dayOfMonth, year] = today.split('/')
+      const workDate = `${year}-${month}-${dayOfMonth}`
 
       // Fetch the published day for today
       const { data: day, error: dayError } = await supabase
