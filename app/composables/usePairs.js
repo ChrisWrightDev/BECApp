@@ -6,7 +6,6 @@ export const usePairs = () => {
   
   const tanks = useState('tanks', () => [])
   const matedPairs = useState('matedPairs', () => [])
-  const hatches = useState('hatches', () => [])
   const loading = useState('pairsLoading', () => false)
   const error = useState('pairsError', () => null)
 
@@ -27,17 +26,6 @@ export const usePairs = () => {
         grouped[tankId] = []
       }
       grouped[tankId].push(pair)
-    })
-    return grouped
-  })
-
-  const hatchesByPair = computed(() => {
-    const grouped = {}
-    hatches.value.forEach(hatch => {
-      if (!grouped[hatch.pair_id]) {
-        grouped[hatch.pair_id] = []
-      }
-      grouped[hatch.pair_id].push(hatch)
     })
     return grouped
   })
@@ -312,131 +300,16 @@ export const usePairs = () => {
     }
   }
 
-  // Supabase operations - Hatches
-  const fetchHatches = async (pairId = null) => {
-    try {
-      loading.value = true
-      error.value = null
-      
-      let query = supabase
-        .from('hatches')
-        .select('*')
-        .order('hatch_date', { ascending: false })
-
-      if (pairId) {
-        query = query.eq('pair_id', pairId)
-      }
-
-      const { data, error: fetchError } = await withTimeout(query)
-
-      if (fetchError) throw fetchError
-
-      hatches.value = data
-      return { data, error: null }
-    } catch (err) {
-      error.value = err.message
-      console.error('Error fetching hatches:', err)
-      return { data: null, error: err }
-    } finally {
-      loading.value = false
-    }
-  }
-
-  const createHatch = async (hatchData) => {
-    try {
-      loading.value = true
-      error.value = null
-
-      const { data, error: createError } = await supabase
-        .from('hatches')
-        .insert({
-          ...hatchData,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single()
-
-      if (createError) throw createError
-
-      hatches.value.unshift(data)
-      return { data, error: null }
-    } catch (err) {
-      error.value = err.message
-      console.error('Error creating hatch:', err)
-      return { data: null, error: err }
-    } finally {
-      loading.value = false
-    }
-  }
-
-  const updateHatch = async (hatchId, updates) => {
-    try {
-      loading.value = true
-      error.value = null
-
-      const { data, error: updateError } = await supabase
-        .from('hatches')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', hatchId)
-        .select()
-        .single()
-
-      if (updateError) throw updateError
-
-      const index = hatches.value.findIndex(h => h.id === hatchId)
-      if (index !== -1) {
-        hatches.value[index] = data
-      }
-
-      return { data, error: null }
-    } catch (err) {
-      error.value = err.message
-      console.error('Error updating hatch:', err)
-      return { data: null, error: err }
-    } finally {
-      loading.value = false
-    }
-  }
-
-  const deleteHatch = async (hatchId) => {
-    try {
-      loading.value = true
-      error.value = null
-
-      const { error: deleteError } = await supabase
-        .from('hatches')
-        .delete()
-        .eq('id', hatchId)
-
-      if (deleteError) throw deleteError
-
-      hatches.value = hatches.value.filter(h => h.id !== hatchId)
-      return { error: null }
-    } catch (err) {
-      error.value = err.message
-      console.error('Error deleting hatch:', err)
-      return { error: err }
-    } finally {
-      loading.value = false
-    }
-  }
-
   return {
     // State
     tanks: readonly(tanks),
     matedPairs: readonly(matedPairs),
-    hatches: readonly(hatches),
     loading: readonly(loading),
     error: readonly(error),
     // Getters
     activeTanks,
     activePairs,
     pairsByTank,
-    hatchesByPair,
     // Tank operations
     fetchTanks,
     createTank,
@@ -446,12 +319,7 @@ export const usePairs = () => {
     fetchPairs,
     createPair,
     updatePair,
-    deletePair,
-    // Hatch operations
-    fetchHatches,
-    createHatch,
-    updateHatch,
-    deleteHatch
+    deletePair
   }
 }
 

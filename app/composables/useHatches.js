@@ -120,6 +120,11 @@ export const useHatches = () => {
     hatches.value.filter((hatch) => isCurrentStatus(hatch.status))
   )
 
+  const hatchesForPair = (pairId) => {
+    if (!pairId) return []
+    return (hatches.value || []).filter((hatch) => hatch.pair_id === pairId)
+  }
+
   const summaryStats = computed(() => {
     const items = currentHatches.value
     const byStage = {}
@@ -209,6 +214,7 @@ export const useHatches = () => {
   return {
     hatches: readonly(hatches),
     currentHatches,
+    hatchesForPair,
     summaryStats,
     loading: readonly(loading),
     error: readonly(error),

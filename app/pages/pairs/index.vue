@@ -2,7 +2,7 @@
   <div>
     <div class="page-header">
       <h1>Pairs</h1>
-      <p>Track mated pairs and legacy clutches</p>
+      <p>Track mated pairs and clutches</p>
       <div class="flex gap-2 mt-3">
         <button @click="openTankModal" class="btn btn-outline btn-sm flex-1">
           <Icon name="mdi:water" class="w-4 h-4" />
@@ -93,7 +93,7 @@
               </div>
               <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow">
                 <li><a @click="openPairModal(pair)">Edit</a></li>
-                <li><a @click="viewHatches(pair)" class="text-info">View Legacy Clutches</a></li>
+                <li><a @click="viewHatches(pair)" class="text-info">View Clutches</a></li>
                 <li><a @click="deletePairConfirm(pair)" class="text-error">Delete</a></li>
               </ul>
             </div>
@@ -110,10 +110,10 @@
                 Paired: {{ pair.paired_date ? formatDate(pair.paired_date) : 'Not set' }}
               </span>
             </div>
-            <div v-if="pairHatches(pair.id).length > 0" class="flex items-center gap-2">
+            <div class="flex items-center gap-2">
               <Icon name="mdi:egg" class="w-3 h-3 sm:w-4 sm:h-4 text-base-content/50 flex-shrink-0" />
               <span class="text-xs sm:text-sm text-base-content/70">
-                {{ pairHatches(pair.id).length }} clutch{{ pairHatches(pair.id).length !== 1 ? 'es' : '' }} (legacy)
+                {{ pairClutchCount(pair.id) }} clutch{{ pairClutchCount(pair.id) !== 1 ? 'es' : '' }}
               </span>
             </div>
           </div>
@@ -126,6 +126,13 @@
             <span class="badge badge-sm sm:badge-md" :class="getStatusBadgeClass(pair.status)">
               {{ pair.status }}
             </span>
+            <button
+              type="button"
+              class="badge badge-sm sm:badge-md badge-outline cursor-pointer"
+              @click="viewHatches(pair)"
+            >
+              {{ pairClutchCount(pair.id) }} clutch{{ pairClutchCount(pair.id) !== 1 ? 'es' : '' }}
+            </button>
           </div>
         </div>
       </div>
@@ -235,17 +242,10 @@
     </dialog>
 
 
-    <!-- View Hatches Modal -->
+    <!-- View Clutches Modal -->
     <dialog ref="hatchesViewModal" class="modal">
       <div class="modal-box">
-        <div class="alert alert-warning mb-4">
-          <Icon name="mdi:alert" class="w-5 h-5" />
-          <div class="text-sm">
-            <p class="font-semibold">Legacy Clutch Records (Read-Only)</p>
-            <p>The hatches table is deprecated. Use hatch_batches for new clutch records.</p>
-          </div>
-        </div>
-        <h3 class="font-bold text-lg mb-4">Legacy Clutch Records</h3>
+        <h3 class="font-bold text-lg mb-4">Clutches</h3>
         <div v-if="selectedPair" class="mb-4">
           <p class="text-sm text-base-content/70">
             Pair: <strong>{{ selectedPair.male_species }} × {{ selectedPair.female_species }}</strong>
@@ -253,25 +253,31 @@
         </div>
         <div class="divider"></div>
         <div v-if="viewingHatches.length > 0" class="space-y-2 max-h-96 overflow-y-auto">
-          <div
+          <NuxtLink
             v-for="hatch in viewingHatches"
             :key="hatch.id"
-            class="flex items-center justify-between p-3 bg-base-200 rounded-lg"
+            :to="`/hatches/${hatch.id}`"
+            class="flex items-start justify-between gap-3 p-3 bg-base-200 rounded-lg hover:bg-base-300 transition-colors"
           >
-            <div>
-              <div class="font-semibold">{{ formatDate(hatch.hatch_date) }}</div>
-              <div class="text-sm text-base-content/70">
-                <span v-if="hatch.quantity">Quantity: {{ hatch.quantity }}</span>
-                <span v-else>Quantity: Not specified</span>
+            <div class="min-w-0">
+              <div class="font-semibold truncate">{{ hatch.batch_code || 'Untitled batch' }}</div>
+              <div class="text-sm text-base-content/70 mt-0.5">
+                Laid: {{ hatch.eggLaidLabel || formatDate(hatch.egg_laid_date) }}
               </div>
-              <div v-if="hatch.notes" class="text-sm text-base-content/60 mt-1">
-                {{ hatch.notes }}
+              <div class="flex flex-wrap gap-1.5 mt-2">
+                <span v-if="hatch.stage" class="badge badge-outline badge-sm capitalize">
+                  {{ formatHatchLabel(hatch.stage) }}
+                </span>
+                <span class="badge badge-sm capitalize" :class="getHatchStatusClass(hatch.status)">
+                  {{ hatch.status || 'unknown' }}
+                </span>
+                <span class="badge badge-ghost badge-sm">
+                  {{ hatch.current_count != null ? hatch.current_count : 0 }} fish
+                </span>
               </div>
             </div>
-            <div class="flex gap-2">
-              <span class="badge badge-sm">Read-only</span>
-            </div>
-          </div>
+            <Icon name="mdi:chevron-right" class="w-5 h-5 text-base-content/40 shrink-0 mt-0.5" />
+          </NuxtLink>
         </div>
         <div v-else class="text-center py-8 text-base-content/70">
           No clutches recorded for this pair
@@ -415,8 +421,8 @@
       <div class="modal-box">
         <h3 class="font-bold text-lg mb-4">Delete Mated Pair</h3>
         <p class="mb-4">
-          Are you sure you want to delete this pair? This will also delete all associated clutches.
-          This action cannot be undone.
+          Are you sure you want to delete this pair? Linked hatch batches stay in the system
+          and are unassigned from this pair. This action cannot be undone.
         </p>
         <div class="modal-action">
           <button @click="closeDeletePairModal" class="btn btn-ghost">Cancel</button>
@@ -461,23 +467,19 @@ const { showSuccess, showError } = useNotifications()
 const {
   tanks,
   matedPairs,
-  hatches,
   activeTanks,
   activePairs,
-  hatchesByPair,
   fetchTanks,
   fetchPairs,
-  fetchHatches,
   createTank,
   updateTank,
   deleteTank,
   createPair,
   updatePair,
-  deletePair,
-  createHatch,
-  updateHatch,
-  deleteHatch
+  deletePair
 } = usePairs()
+
+const { hatchesForPair, fetchHatches } = useHatches()
 
 const statusFilter = ref(null)
 const tankFilter = ref(null)
@@ -529,8 +531,8 @@ const displayPairs = computed(() => {
 })
 
 const viewingHatches = computed(() => {
-  if (!selectedPair.value) return []
-  return hatches.value.filter(h => h.pair_id === selectedPair.value.id)
+  if (!selectedPair.value?.id) return []
+  return hatchesForPair(selectedPair.value.id)
 })
 
 // Methods
@@ -555,9 +557,7 @@ const loadHatches = async () => {
   await fetchHatches()
 }
 
-const pairHatches = (pairId) => {
-  return hatches.value.filter(h => h.pair_id === pairId)
-}
+const pairClutchCount = (pairId) => hatchesForPair(pairId).length
 
 const clearFilters = () => {
   statusFilter.value = null
@@ -712,7 +712,6 @@ const confirmDeletePair = async () => {
     showSuccess('Pair deleted successfully')
     closeDeletePairModal()
     await loadPairs()
-    await loadHatches()
   } catch (err) {
     console.error('Error deleting pair:', err)
     showError('Error deleting pair: ' + (err.message || 'Unknown error'))
@@ -751,6 +750,16 @@ const confirmDeleteTank = async () => {
 const getStatusBadgeClass = (status) => {
   return status === 'active' ? 'badge-success' : 'badge-ghost'
 }
+
+const getHatchStatusClass = (status) => {
+  if (status === 'active') return 'badge-success'
+  if (status === 'watch') return 'badge-warning'
+  if (status === 'completed') return 'badge-info'
+  if (status === 'failed') return 'badge-error'
+  return 'badge-ghost'
+}
+
+const formatHatchLabel = (value) => String(value || '').replace(/_/g, ' ')
 
 const formatDate = (date) => {
   if (!date) return 'N/A'
