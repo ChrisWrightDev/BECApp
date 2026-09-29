@@ -31,19 +31,14 @@
       </div>
     </div>
 
-    <!-- Error Message -->
-    <div v-if="error" class="alert alert-error mb-6">
-      <Icon name="mdi:alert-circle" class="w-6 h-6" />
-      <span>{{ error }}</span>
-    </div>
-
-    <!-- Loading State -->
-    <div v-if="loading" class="flex justify-center py-12">
-      <span class="loading loading-spinner loading-lg"></span>
-    </div>
-
+    <PageLoadState
+      :loading="loading"
+      :error="error"
+      :empty="false"
+      @retry="retry"
+    >
     <!-- Calendar Grid -->
-    <div v-else class="card bg-base-100 shadow-xl">
+    <div class="card bg-base-100 shadow-xl">
       <div class="card-body p-4">
         <!-- Day Headers -->
         <div class="grid grid-cols-7 gap-2 mb-2">
@@ -110,6 +105,7 @@
         </div>
       </div>
     </div>
+    </PageLoadState>
 
     <!-- Task Detail Modal -->
     <dialog ref="taskModal" class="modal">
@@ -203,11 +199,14 @@ definePageMeta({
 
 const {
   tasks,
-  loading,
-  error,
   fetchTasks,
   updateTaskStatus
 } = useTasks()
+
+const { loading, error, load: loadMonthTasks, retry } = usePageLoad(async () => {
+  const { error: fetchError } = await fetchTasks()
+  if (fetchError) throw fetchError
+})
 
 const currentMonth = ref(new Date().getMonth())
 const currentYear = ref(new Date().getFullYear())
@@ -322,17 +321,6 @@ const goToToday = () => {
   loadMonthTasks()
 }
 
-const loadMonthTasks = async () => {
-  const firstDay = new Date(currentYear.value, currentMonth.value, 1)
-  const lastDay = new Date(currentYear.value, currentMonth.value + 1, 0)
-  
-  const startDate = firstDay.toISOString().split('T')[0]
-  const endDate = lastDay.toISOString().split('T')[0]
-  
-  // Fetch tasks for the month range
-  // Note: We'll fetch all tasks and filter client-side, or you could add date range to fetchTasks
-  await fetchTasks()
-}
 
 const openTaskModal = (task) => {
   selectedTask.value = task

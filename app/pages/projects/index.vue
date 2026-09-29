@@ -42,19 +42,22 @@
       </div>
     </div>
 
-    <!-- Error Message -->
-    <div v-if="error" class="alert alert-error mb-6">
-      <Icon name="mdi:alert-circle" class="w-6 h-6" />
-      <span>{{ error }}</span>
-    </div>
-
-    <!-- Loading State -->
-    <div v-if="loading" class="flex justify-center py-12">
-      <span class="loading loading-spinner loading-lg"></span>
-    </div>
-
+    <PageLoadState
+      :loading="loading"
+      :error="error"
+      :empty="displayProjects.length === 0"
+      empty-icon="mdi:folder-outline"
+      empty-title="No projects found"
+      empty-description="Create your first project to get started"
+      @retry="retry"
+    >
+      <template #empty-action>
+        <button @click="openCreateModal" class="btn btn-primary mt-4">
+          Create Project
+        </button>
+      </template>
     <!-- Projects Grid -->
-    <div v-else-if="displayProjects.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
       <div
         v-for="project in displayProjects"
         :key="project.id"
@@ -104,20 +107,7 @@
         </div>
       </div>
     </div>
-
-    <!-- Empty State -->
-    <div v-else class="card bg-base-100 shadow-xl">
-      <div class="card-body text-center py-12">
-        <Icon name="mdi:folder-outline" class="w-16 h-16 mx-auto text-base-content/30 mb-4" />
-        <p class="text-lg text-base-content/70">No projects found</p>
-        <p class="text-sm text-base-content/50 mt-2">
-          Create your first project to get started
-        </p>
-        <button @click="openCreateModal" class="btn btn-primary mt-4">
-          Create Project
-        </button>
-      </div>
-    </div>
+    </PageLoadState>
 
     <!-- Create/Edit Project Modal -->
     <dialog ref="projectModal" class="modal">
@@ -266,8 +256,6 @@ definePageMeta({
 const {
   projects,
   templates,
-  loading,
-  error,
   activeProjects,
   fetchProjects,
   fetchTemplates,
@@ -312,22 +300,29 @@ const displayProjects = computed(() => {
 })
 
 // Methods
-const loadProjects = async () => {
+const { loading, error, load: loadProjects, retry } = usePageLoad(async () => {
   const options = {}
   if (statusFilter.value) options.status = statusFilter.value
-  await fetchProjects(options)
-}
+  const { error: fetchError } = await fetchProjects(options)
+  if (fetchError) throw fetchError
+})
 
 const loadTemplates = async () => {
   loadingTemplates.value = true
-  await fetchTemplates()
-  loadingTemplates.value = false
+  try {
+    await fetchTemplates()
+  } finally {
+    loadingTemplates.value = false
+  }
 }
 
 const loadTanks = async () => {
   loadingTanks.value = true
-  await fetchTanks({ status: 'active' })
-  loadingTanks.value = false
+  try {
+    await fetchTanks({ status: 'active' })
+  } finally {
+    loadingTanks.value = false
+  }
 }
 
 const openCreateModal = async () => {

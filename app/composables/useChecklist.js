@@ -1,3 +1,5 @@
+import { withTimeout } from '~/utils/loadState'
+
 export const useChecklist = () => {
   const supabase = useSupabaseClient()
   const { user } = useAuth()
@@ -59,32 +61,36 @@ export const useChecklist = () => {
       const workDate = `${year}-${month}-${dayOfMonth}`
 
       // Fetch the published day for today
-      const { data: day, error: dayError } = await supabase
-        .from('checklist_days')
-        .select('*')
-        .eq('work_date', workDate)
-        .eq('status', 'published')
-        .single()
+      const { data: day, error: dayError } = await withTimeout(
+        supabase
+          .from('checklist_days')
+          .select('*')
+          .eq('work_date', workDate)
+          .eq('status', 'published')
+          .maybeSingle()
+      )
 
       if (dayError) {
-        if (dayError.code === 'PGRST116') {
-          // No rows returned - no published checklist yet
-          checklistDay.value = null
-          checklistItems.value = []
-          return { day: null, items: [], error: null }
-        }
         throw dayError
+      }
+
+      if (!day) {
+        checklistDay.value = null
+        checklistItems.value = []
+        return { day: null, items: [], error: null }
       }
 
       checklistDay.value = day
 
       // Fetch items for this day
-      const { data: items, error: itemsError } = await supabase
-        .from('checklist_items')
-        .select('*')
-        .eq('day_id', day.id)
-        .order('block', { ascending: true })
-        .order('sort_order', { ascending: true })
+      const { data: items, error: itemsError } = await withTimeout(
+        supabase
+          .from('checklist_items')
+          .select('*')
+          .eq('day_id', day.id)
+          .order('block', { ascending: true })
+          .order('sort_order', { ascending: true })
+      )
 
       if (itemsError) throw itemsError
 

@@ -5,19 +5,17 @@
       <p class="text-sm sm:text-base text-base-content/70">Manage your daily tasks</p>
     </div>
 
-    <!-- Error Message -->
-    <div v-if="error" class="alert alert-error mb-6">
-      <Icon name="mdi:alert-circle" class="w-6 h-6" />
-      <span>{{ error }}</span>
-    </div>
-
-    <!-- Loading State -->
-    <div v-if="loading" class="flex justify-center py-12">
-      <span class="loading loading-spinner loading-lg"></span>
-    </div>
-
+    <PageLoadState
+      :loading="loading"
+      :error="error"
+      :empty="orderedTasks.length === 0"
+      empty-icon="mdi:check-circle-outline"
+      empty-title="No tasks found"
+      empty-description="Try adjusting your filters or select a different date"
+      @retry="retry"
+    >
     <!-- Tasks List -->
-    <div v-else-if="orderedTasks.length > 0" class="space-y-4 sm:space-y-6">
+    <div class="space-y-4 sm:space-y-6">
       <div class="card bg-base-100 shadow-xl">
         <div class="card-body p-4 sm:p-6">
           <h2 class="card-title mb-3 sm:mb-4 text-lg sm:text-xl">
@@ -126,17 +124,7 @@
         </div>
       </div>
     </div>
-
-    <!-- Empty State -->
-    <div v-else-if="orderedTasks.length === 0" class="card bg-base-100 shadow-xl">
-      <div class="card-body text-center py-12">
-        <Icon name="mdi:check-circle-outline" class="w-16 h-16 mx-auto text-base-content/30 mb-4" />
-        <p class="text-lg text-base-content/70">No tasks found</p>
-        <p class="text-sm text-base-content/50 mt-2">
-          Try adjusting your filters or select a different date
-        </p>
-      </div>
-    </div>
+    </PageLoadState>
 
     <!-- Logout Prompt Modal -->
     <dialog ref="logoutPromptModal" class="modal">
@@ -231,8 +219,6 @@ definePageMeta({
 const { isAdmin } = useAuth()
 const {
   tasks,
-  loading,
-  error,
   filters,
   filteredTasks,
   fetchTasks,
@@ -242,6 +228,16 @@ const {
   generateDailyTasks,
   generateTasksFromPhase
 } = useTasks()
+
+const { loading, error, load: loadTasks, retry } = usePageLoad(async () => {
+  const options = {}
+  if (filters.value.status) options.status = filters.value.status
+  if (filters.value.timeWindow) options.timeWindow = filters.value.timeWindow
+  if (filters.value.date) options.date = filters.value.date
+
+  const { error: fetchError } = await fetchTasks(options)
+  if (fetchError) throw fetchError
+})
 
 const {
   updateProject,
@@ -477,15 +473,6 @@ const isTaskDisabled = (task) => {
 }
 
 // Methods
-const loadTasks = async () => {
-  const options = {}
-  if (filters.value.status) options.status = filters.value.status
-  if (filters.value.timeWindow) options.timeWindow = filters.value.timeWindow
-  if (filters.value.date) options.date = filters.value.date
-  
-  await fetchTasks(options)
-}
-
 const handleStatusChange = async (task, isCompleted) => {
   // Prevent completing tasks out of order
   if (isCompleted && isTaskDisabled(task)) {
@@ -711,9 +698,11 @@ const fetchNextPhaseDescription = async (task) => {
       .gt('order_index', task.project_current_phase_order)
       .order('order_index', { ascending: true })
       .limit(1)
-      .single()
+      .maybeSingle()
     
-    if (!phaseError && nextPhase) {
+    if (phaseError) throw phaseError
+    
+    if (nextPhase) {
       // Cache the description (or name if no description)
       const description = nextPhase.description || nextPhase.name
       nextPhaseDescriptionCache.value.set(cacheKey, description)
@@ -761,9 +750,11 @@ const advanceProjectPhase = async (task) => {
       .gt('order_index', currentPhaseOrder)
       .order('order_index', { ascending: true })
       .limit(1)
-      .single()
+      .maybeSingle()
 
-    if (phaseError || !nextPhase) {
+    if (phaseError) throw phaseError
+
+    if (!nextPhase) {
       // No next phase - project might be complete
       const result = await updateProject(task.project_id, { 
         status: 'completed',

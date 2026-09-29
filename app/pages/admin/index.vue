@@ -5,8 +5,17 @@
       <p class="text-sm sm:text-base text-base-content/70">System administration and management</p>
     </div>
 
+    <PageLoadState
+      :loading="loading"
+      :error="error"
+      :empty="!systemStats"
+      empty-icon="mdi:view-dashboard-outline"
+      empty-title="No dashboard data available"
+      empty-description="System stats will appear here once data is loaded"
+      @retry="retry"
+    >
     <!-- Quick Stats -->
-    <div v-if="!loading && systemStats" class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-8">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-8">
       <div class="stat bg-base-100 shadow rounded-box p-3 sm:p-4">
         <div class="stat-title text-xs sm:text-sm">Total Projects</div>
         <div class="stat-value text-primary text-xl sm:text-2xl">{{ systemStats.projects || 0 }}</div>
@@ -24,6 +33,7 @@
         <div class="stat-value text-info text-xl sm:text-2xl">{{ systemStats.users || 0 }}</div>
       </div>
     </div>
+    </PageLoadState>
 
     <!-- System Controls -->
     <div class="card bg-base-100 shadow-xl mb-4 sm:mb-6">
@@ -148,7 +158,7 @@ definePageMeta({
   layout: 'admin'
 })
 
-const { loading, fetchSystemStats } = useAnalytics()
+const { fetchSystemStats } = useAnalytics()
 const { generateDailyTasks } = useTasks()
 const { checkAndAdvancePhases } = useProjects()
 
@@ -157,7 +167,13 @@ const generatingTasks = ref(false)
 const advancingPhases = ref(false)
 const lastOperationResult = ref(null)
 
-const { showSuccess, showError } = useNotifications()
+const { showSuccess, showError, showInfo } = useNotifications()
+
+const { loading, error, load: loadDashboard, retry } = usePageLoad(async () => {
+  const result = await fetchSystemStats()
+  if (result.error) throw result.error
+  systemStats.value = result.data
+})
 
 const handleGenerateTasks = async () => {
   generatingTasks.value = true
@@ -225,10 +241,7 @@ const handleAdvancePhases = async () => {
 }
 
 onMounted(async () => {
-  const result = await fetchSystemStats()
-  if (result.data) {
-    systemStats.value = result.data
-  }
+  await loadDashboard()
 })
 </script>
 

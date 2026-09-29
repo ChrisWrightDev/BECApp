@@ -8,19 +8,17 @@
       </NuxtLink>
     </div>
 
-    <!-- Loading State -->
-    <div v-if="loading" class="flex justify-center py-12">
-      <span class="loading loading-spinner loading-lg"></span>
-    </div>
-
-    <!-- Error State -->
-    <div v-else-if="error || !project" class="alert alert-error">
-      <Icon name="mdi:alert-circle" class="w-6 h-6" />
-      <span>{{ error || 'Project not found' }}</span>
-    </div>
-
+    <PageLoadState
+      :loading="loading"
+      :error="error"
+      :empty="!project"
+      empty-icon="mdi:folder-off-outline"
+      empty-title="Project not found"
+      empty-description="This project may have been deleted or you may not have access"
+      @retry="retry"
+    >
     <!-- Project Details -->
-    <div v-else>
+    <div>
       <!-- Header -->
       <div class="mb-8 flex justify-between items-start">
         <div>
@@ -262,6 +260,7 @@
         </div>
       </div>
     </div>
+    </PageLoadState>
 
     <!-- Edit Project Modal -->
     <dialog ref="editModal" class="modal">
@@ -384,8 +383,6 @@ const projectId = route.params.id
 const {
   projects,
   templates,
-  loading,
-  error,
   projectById,
   fetchProjects,
   fetchProjectById,
@@ -444,18 +441,17 @@ const completionRate = computed(() => {
 })
 
 // Methods
-const loadProject = async () => {
+const { loading, error, load: loadProject, retry } = usePageLoad(async () => {
   const { data, error: fetchError } = await fetchProjectById(projectId)
-  if (fetchError) {
-    error.value = fetchError.message
+  if (fetchError) throw fetchError
+  if (!data) {
+    project.value = null
     return
   }
-  if (data) {
-    project.value = data
-    await loadPhases()
-    await loadProjectHistory()
-  }
-}
+  project.value = data
+  await loadPhases()
+  await loadProjectHistory()
+})
 
 const loadProjectHistory = async () => {
   historyLoading.value = true

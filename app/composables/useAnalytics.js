@@ -1,3 +1,5 @@
+import { withTimeout } from '~/utils/loadState'
+
 export const useAnalytics = () => {
   const supabase = useSupabaseClient()
   
@@ -18,14 +20,14 @@ export const useAnalytics = () => {
         { count: pairsCount },
         { count: tanksCount },
         { count: usersCount }
-      ] = await Promise.all([
+      ] = await withTimeout(Promise.all([
         supabase.from('projects').select('*', { count: 'exact', head: true }),
         supabase.from('tasks').select('*', { count: 'exact', head: true }),
         supabase.from('templates').select('*', { count: 'exact', head: true }),
         supabase.from('mated_pairs').select('*', { count: 'exact', head: true }),
         supabase.from('tanks').select('*', { count: 'exact', head: true }),
         supabase.from('profiles').select('*', { count: 'exact', head: true })
-      ])
+      ]))
 
       return {
         data: {
@@ -53,9 +55,11 @@ export const useAnalytics = () => {
       loading.value = true
       error.value = null
 
-      const { data: projects, error: fetchError } = await supabase
-        .from('projects')
-        .select('status, created_at')
+      const { data: projects, error: fetchError } = await withTimeout(
+        supabase
+          .from('projects')
+          .select('status, created_at')
+      )
 
       if (fetchError) throw fetchError
 
@@ -107,7 +111,7 @@ export const useAnalytics = () => {
         }
       }
 
-      const { data: tasks, error: fetchError } = await query
+      const { data: tasks, error: fetchError } = await withTimeout(query)
 
       if (fetchError) throw fetchError
 
@@ -164,15 +168,19 @@ export const useAnalytics = () => {
       loading.value = true
       error.value = null
 
-      const { data: templates, error: templatesError } = await supabase
-        .from('templates')
-        .select('id, name, type')
+      const { data: templates, error: templatesError } = await withTimeout(
+        supabase
+          .from('templates')
+          .select('id, name, type')
+      )
 
       if (templatesError) throw templatesError
 
-      const { data: projects, error: projectsError } = await supabase
-        .from('projects')
-        .select('template_id, status')
+      const { data: projects, error: projectsError } = await withTimeout(
+        supabase
+          .from('projects')
+          .select('template_id, status')
+      )
 
       if (projectsError) throw projectsError
 
@@ -209,28 +217,34 @@ export const useAnalytics = () => {
       const startDateStr = startDate.toISOString().split('T')[0]
 
       // Get task completions
-      const { data: completedTasks, error: tasksError } = await supabase
-        .from('tasks')
-        .select('completed_at')
-        .eq('status', 'completed')
-        .gte('completed_at', startDate.toISOString())
+      const { data: completedTasks, error: tasksError } = await withTimeout(
+        supabase
+          .from('tasks')
+          .select('completed_at')
+          .eq('status', 'completed')
+          .gte('completed_at', startDate.toISOString())
+      )
 
       if (tasksError) throw tasksError
 
       // Get project creations
-      const { data: newProjects, error: projectsError } = await supabase
-        .from('projects')
-        .select('created_at')
-        .gte('created_at', startDate.toISOString())
+      const { data: newProjects, error: projectsError } = await withTimeout(
+        supabase
+          .from('projects')
+          .select('created_at')
+          .gte('created_at', startDate.toISOString())
+      )
 
       if (projectsError) throw projectsError
 
       // Get phase changes
-      const { data: phaseChanges, error: historyError } = await supabase
-        .from('project_history')
-        .select('created_at, action')
-        .in('action', ['phase_started', 'phase_completed'])
-        .gte('created_at', startDate.toISOString())
+      const { data: phaseChanges, error: historyError } = await withTimeout(
+        supabase
+          .from('project_history')
+          .select('created_at, action')
+          .in('action', ['phase_started', 'phase_completed'])
+          .gte('created_at', startDate.toISOString())
+      )
 
       if (historyError) throw historyError
 
@@ -287,19 +301,23 @@ export const useAnalytics = () => {
       error.value = null
 
       // Get tasks completed by user
-      const { data: tasks, error: tasksError } = await supabase
-        .from('tasks')
-        .select('completed_by, completed_at')
-        .eq('status', 'completed')
-        .not('completed_by', 'is', null)
+      const { data: tasks, error: tasksError } = await withTimeout(
+        supabase
+          .from('tasks')
+          .select('completed_by, completed_at')
+          .eq('status', 'completed')
+          .not('completed_by', 'is', null)
+      )
 
       if (tasksError) throw tasksError
 
       // Get projects created by user
-      const { data: projects, error: projectsError } = await supabase
-        .from('projects')
-        .select('created_by, created_at')
-        .not('created_by', 'is', null)
+      const { data: projects, error: projectsError } = await withTimeout(
+        supabase
+          .from('projects')
+          .select('created_by, created_at')
+          .not('created_by', 'is', null)
+      )
 
       if (projectsError) throw projectsError
 

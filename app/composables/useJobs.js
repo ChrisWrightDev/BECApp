@@ -1,3 +1,5 @@
+import { withTimeout } from '~/utils/loadState'
+
 export const useJobs = () => {
   const supabase = useSupabaseClient()
   const { user } = useAuth()
@@ -36,7 +38,7 @@ export const useJobs = () => {
         query = query.eq('status', options.status)
       }
 
-      const { data, error: fetchError } = await query
+      const { data, error: fetchError } = await withTimeout(query)
 
       if (fetchError) throw fetchError
 

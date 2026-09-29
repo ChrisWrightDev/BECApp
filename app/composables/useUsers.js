@@ -1,3 +1,5 @@
+import { withTimeout } from '~/utils/loadState'
+
 export const useUsers = () => {
   const supabase = useSupabaseClient()
   const { user: currentUser } = useAuth()
@@ -13,10 +15,12 @@ export const useUsers = () => {
       error.value = null
 
       // Fetch all profiles (admin can see all)
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false })
+      const { data: profiles, error: profilesError } = await withTimeout(
+        supabase
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false })
+      )
 
       if (profilesError) throw profilesError
 
@@ -155,7 +159,7 @@ export const useUsers = () => {
       loading.value = true
       error.value = null
 
-      const result = await fetchUsers()
+      const result = await withTimeout(fetchUsers())
       if (result.error) throw result.error
 
       // Ensure we have valid data
@@ -165,7 +169,8 @@ export const useUsers = () => {
       }
 
       // Get stats for each user
-      const usersWithStats = await Promise.all(
+      const usersWithStats = await withTimeout(
+        Promise.all(
         usersList.map(async (user) => {
           const { data: stats } = await getUserStats(user.id)
           return {
@@ -179,6 +184,7 @@ export const useUsers = () => {
             }
           }
         })
+        )
       )
 
       users.value = usersWithStats

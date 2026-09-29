@@ -1,3 +1,5 @@
+import { withTimeout } from '~/utils/loadState'
+
 export const usePairs = () => {
   const supabase = useSupabaseClient()
   const { user } = useAuth()
@@ -55,7 +57,7 @@ export const usePairs = () => {
         query = query.eq('status', options.status)
       }
 
-      const { data, error: fetchError } = await query
+      const { data, error: fetchError } = await withTimeout(query)
 
       if (fetchError) throw fetchError
 
@@ -179,7 +181,7 @@ export const usePairs = () => {
         query = query.eq('tank_id', options.tankId)
       }
 
-      const { data, error: fetchError } = await query
+      const { data, error: fetchError } = await withTimeout(query)
 
       if (fetchError) throw fetchError
 
@@ -325,7 +327,7 @@ export const usePairs = () => {
         query = query.eq('pair_id', pairId)
       }
 
-      const { data, error: fetchError } = await query
+      const { data, error: fetchError } = await withTimeout(query)
 
       if (fetchError) throw fetchError
 

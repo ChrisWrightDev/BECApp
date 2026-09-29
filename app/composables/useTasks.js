@@ -1,3 +1,5 @@
+import { withTimeout } from '~/utils/loadState'
+
 export const useTasks = () => {
   const supabase = useSupabaseClient()
   const { user } = useAuth()
@@ -143,7 +145,7 @@ export const useTasks = () => {
         query = query.eq('assigned_to', options.assignedTo)
       }
 
-      const { data, error: fetchError } = await query
+      const { data, error: fetchError } = await withTimeout(query)
 
       if (fetchError) throw fetchError
 

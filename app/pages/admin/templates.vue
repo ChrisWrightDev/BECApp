@@ -11,19 +11,22 @@
       </button>
     </div>
 
-    <!-- Error Message -->
-    <div v-if="error" class="alert alert-error mb-6">
-      <Icon name="mdi:alert-circle" class="w-6 h-6" />
-      <span>{{ error }}</span>
-    </div>
-
-    <!-- Loading State -->
-    <div v-if="loading" class="flex justify-center py-12">
-      <span class="loading loading-spinner loading-lg"></span>
-    </div>
-
+    <PageLoadState
+      :loading="loading"
+      :error="error"
+      :empty="templates.length === 0"
+      empty-icon="mdi:file-document-outline"
+      empty-title="No templates found"
+      empty-description="Create your first template to get started"
+      @retry="retry"
+    >
+      <template #empty-action>
+        <button @click="openTemplateModal" class="btn btn-primary mt-4">
+          Create Template
+        </button>
+      </template>
     <!-- Templates List -->
-    <div v-else-if="templates.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <div
         v-for="template in templates"
         :key="template.id"
@@ -60,20 +63,7 @@
         </div>
       </div>
     </div>
-
-    <!-- Empty State -->
-    <div v-else class="card bg-base-100 shadow-xl">
-      <div class="card-body text-center py-12">
-        <Icon name="mdi:file-document-outline" class="w-16 h-16 mx-auto text-base-content/30 mb-4" />
-        <p class="text-lg text-base-content/70">No templates found</p>
-        <p class="text-sm text-base-content/50 mt-2">
-          Create your first template to get started
-        </p>
-        <button @click="openTemplateModal" class="btn btn-primary mt-4">
-          Create Template
-        </button>
-      </div>
-    </div>
+    </PageLoadState>
 
     <!-- Create/Edit Template Modal -->
     <dialog ref="templateModal" class="modal">
@@ -522,8 +512,6 @@ definePageMeta({
 
 const {
   templates,
-  loading,
-  error,
   fetchTemplates,
   createTemplate,
   updateTemplate,
@@ -537,6 +525,11 @@ const {
   updatePhaseTask,
   deletePhaseTask
 } = useProjects()
+
+const { loading, error, load: loadTemplates, retry } = usePageLoad(async () => {
+  const { error: fetchError } = await fetchTemplates()
+  if (fetchError) throw fetchError
+})
 const { showSuccess, showError } = useNotifications()
 
 const templateModal = ref(null)
@@ -586,10 +579,6 @@ const phaseTaskForm = ref({
 })
 
 // Methods
-const loadTemplates = async () => {
-  await fetchTemplates()
-}
-
 const openTemplateModal = (template = null) => {
   // Always reset editingTemplate first
   editingTemplate.value = null
