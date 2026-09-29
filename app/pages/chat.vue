@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-[calc(100dvh-6rem)] sm:h-[calc(100dvh-8rem)]">
+  <div class="flex flex-col h-full">
     <!-- Header -->
     <div class="flex-shrink-0 px-4 pt-2 pb-2 bg-base-100">
       <h1 class="text-xl font-semibold text-center">Messages</h1>
@@ -71,8 +71,7 @@
     <!-- Message input (only if user can send) -->
     <div 
       v-if="canSend" 
-      class="flex-shrink-0 bg-base-100 px-4 py-2"
-      style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom))"
+      class="flex-shrink-0 bg-base-100 px-4 py-2 pb-2"
     >
       <div class="flex items-end gap-2">
         <textarea

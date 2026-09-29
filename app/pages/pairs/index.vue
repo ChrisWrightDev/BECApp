@@ -1,25 +1,22 @@
 <template>
   <div>
-    <div class="mb-4 sm:mb-8">
-      <div class="mb-4 sm:mb-6">
-        <h1 class="text-2xl sm:text-4xl font-bold mb-1 sm:mb-2">Mated Pairs</h1>
-        <p class="text-sm sm:text-base text-base-content/70">Track and manage mated pairs and clutches</p>
-      </div>
-      <div class="flex flex-col sm:flex-row gap-2">
-        <button @click="openTankModal" class="btn btn-outline btn-sm sm:btn-md w-full sm:w-auto">
-          <Icon name="mdi:water" class="w-4 h-4 sm:w-5 sm:h-5" />
-          <span class="hidden sm:inline">Manage Tanks</span>
-          <span class="sm:hidden">Tanks</span>
+    <div class="page-header">
+      <h1>Pairs</h1>
+      <p>Track mated pairs and legacy clutches</p>
+      <div class="flex gap-2 mt-3">
+        <button @click="openTankModal" class="btn btn-outline btn-sm flex-1">
+          <Icon name="mdi:water" class="w-4 h-4" />
+          Tanks
         </button>
-        <button @click="openPairModal" class="btn btn-primary btn-sm sm:btn-md w-full sm:w-auto">
-          <Icon name="mdi:plus" class="w-4 h-4 sm:w-5 sm:h-5" />
+        <button @click="openPairModal" class="btn btn-primary btn-sm flex-1">
+          <Icon name="mdi:plus" class="w-4 h-4" />
           New Pair
         </button>
       </div>
     </div>
 
     <!-- Filters -->
-    <div class="card bg-base-100 shadow-xl mb-4 sm:mb-6">
+    <div class="card bg-base-100 shadow-md mb-4">
       <div class="card-body p-4 sm:p-6">
         <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <div class="form-control w-full sm:w-auto sm:min-w-[150px]">
@@ -83,7 +80,7 @@
       <div
         v-for="pair in displayPairs"
         :key="pair.id"
-        class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow"
+        class="card bg-base-100 shadow-md"
       >
         <div class="card-body p-4 sm:p-6">
           <div class="flex justify-between items-start mb-2 gap-2">
@@ -482,16 +479,6 @@ const {
   deleteHatch
 } = usePairs()
 
-const {
-  templates,
-  fetchTemplates,
-  createProject
-} = useProjects()
-
-const {
-  generateTasksForProject
-} = useTasks()
-
 const statusFilter = ref(null)
 const tankFilter = ref(null)
 const submitting = ref(false)
@@ -779,8 +766,7 @@ onMounted(async () => {
   await Promise.all([
     loadPairs(),
     loadTanks(),
-    loadHatches(),
-    fetchTemplates() // Pre-load templates so they're available when creating hatches
+    loadHatches()
   ])
 })
 </script>

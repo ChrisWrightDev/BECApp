@@ -1,5 +1,5 @@
 <template>
-  <div class="toast toast-top toast-end z-50">
+  <div class="toast toast-top toast-end z-50 mt-[calc(var(--app-topbar-height)+var(--app-safe-top)+0.5rem)]">
     <div
       v-for="notification in notifications"
       :key="notification.id"

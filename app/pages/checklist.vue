@@ -1,8 +1,8 @@
 <template>
   <div>
-    <div class="mb-4">
-      <h1 class="text-2xl sm:text-4xl font-bold mb-1">Daily Checklist</h1>
-      <p class="text-sm sm:text-base text-base-content/70">{{ todayDate }}</p>
+    <div class="page-header">
+      <h1>Checklists</h1>
+      <p>{{ todayDate }}</p>
     </div>
 
     <PageLoadState
@@ -17,7 +17,7 @@
     <!-- Checklist Content -->
     <div>
       <!-- Overall Progress -->
-      <div class="card bg-base-100 shadow-xl mb-4">
+      <div class="card bg-base-100 shadow-md mb-4">
         <div class="card-body p-4">
           <div class="flex items-center justify-between mb-2">
             <span class="font-semibold">Overall Progress</span>
@@ -46,7 +46,7 @@
           v-for="block in blocks" 
           :key="block"
           v-show="itemsByBlock[block].length > 0"
-          class="card bg-base-100 shadow-xl"
+          class="card bg-base-100 shadow-md"
         >
           <div class="card-body p-4">
             <!-- Block Header -->

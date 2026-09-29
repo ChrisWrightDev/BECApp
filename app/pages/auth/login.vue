@@ -4,8 +4,8 @@
       <div class="card-body">
         <!-- Logo/Branding -->
         <div class="text-center mb-6">
-          <h1 class="text-3xl font-bold text-primary mb-2">BEC Aquaculture</h1>
-          <p class="text-base-content/70">Sign in to your account</p>
+          <h1 class="text-3xl font-bold text-primary mb-2">Blue Eyed Clowns</h1>
+          <p class="text-base-content/70">Sign in to the hatchery app</p>
         </div>
 
         <!-- Error Alert -->
@@ -179,7 +179,7 @@ const handleLogin = async () => {
       }
       
       // Validate redirect to prevent open redirect vulnerability
-      let redirectTo = '/chat'
+      let redirectTo = '/'
       const redirectParam = route.query.redirect?.toString()
       if (redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')) {
         redirectTo = redirectParam

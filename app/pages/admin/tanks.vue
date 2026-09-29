@@ -1,12 +1,10 @@
 <template>
   <div>
-    <div class="mb-4 sm:mb-8">
-      <div class="mb-4 sm:mb-6">
-        <h1 class="text-2xl sm:text-4xl font-bold mb-1 sm:mb-2">Tank Management</h1>
-        <p class="text-sm sm:text-base text-base-content/70">Manage tank labels and bank layout</p>
-      </div>
-      <div class="flex flex-col sm:flex-row gap-2">
-        <select v-model="systemFilter" class="select select-bordered select-sm sm:select-md w-full sm:w-auto">
+    <div class="page-header">
+      <h1>Tanks</h1>
+      <p>Labels and bank layout</p>
+      <div class="flex flex-col gap-2 mt-3">
+        <select v-model="systemFilter" class="select select-bordered select-sm w-full">
           <option :value="null">All Systems</option>
           <option value="A">System A</option>
           <option value="B">System B</option>
@@ -15,13 +13,13 @@
           <option value="E">System E</option>
           <option value="F">System F</option>
         </select>
-        <select v-model="roleFilter" class="select select-bordered select-sm sm:select-md w-full sm:w-auto">
+        <select v-model="roleFilter" class="select select-bordered select-sm w-full">
           <option :value="null">All Roles</option>
           <option value="mated_pair">Mated Pair</option>
           <option value="grow_out">Grow Out</option>
           <option value="hatch">Hatch</option>
         </select>
-        <button @click="clearFilters" class="btn btn-ghost btn-sm sm:btn-md w-full sm:w-auto">
+        <button class="btn btn-ghost btn-sm w-full" @click="clearFilters">
           Clear Filters
         </button>
       </div>
@@ -36,45 +34,42 @@
       empty-description="Tanks will appear here once they are added to the system"
       @retry="retry"
     >
-    <!-- Tanks by System -->
-    <div class="space-y-6">
-      <div v-for="group in groupedTanks" :key="group.system || 'unlabeled'" class="card bg-base-100 shadow-xl">
-        <div class="card-body p-4 sm:p-6">
-          <h2 class="card-title text-lg sm:text-xl mb-4">
-            {{ group.system ? `System ${group.system}` : 'Unlabeled Tanks' }}
-            <span class="badge badge-lg">{{ group.tanks.length }} tanks</span>
-          </h2>
+      <div class="space-y-6">
+        <div v-for="group in groupedTanks" :key="group.system || 'unlabeled'" class="card bg-base-100 shadow-md">
+          <div class="card-body p-4">
+            <h2 class="card-title text-lg mb-4">
+              {{ group.system ? `System ${group.system}` : 'Unlabeled Tanks' }}
+              <span class="badge badge-lg">{{ group.tanks.length }} tanks</span>
+            </h2>
 
-          <!-- Tanks by Row -->
-          <div v-for="row in groupByRow(group.tanks)" :key="row.rowNo || 'no-row'" class="mb-4">
-            <h3 class="font-semibold text-sm sm:text-base mb-2">
-              {{ row.rowNo ? `Row ${row.rowNo}` : 'No Row' }}
-            </h3>
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-              <div
-                v-for="tank in row.tanks"
-                :key="tank.id"
-                @click="openTankModal(tank)"
-                class="card bg-base-200 hover:bg-base-300 cursor-pointer transition-colors"
-              >
-                <div class="card-body p-3">
-                  <div class="text-sm font-semibold truncate">{{ tank.label || tank.name }}</div>
-                  <div v-if="tank.bank_role" class="badge badge-xs">{{ tank.bank_role }}</div>
-                  <div v-if="tank.status !== 'active'" class="badge badge-xs badge-ghost">{{ tank.status }}</div>
+            <div v-for="row in groupByRow(group.tanks)" :key="row.rowNo || 'no-row'" class="mb-4">
+              <h3 class="font-semibold text-sm mb-2">
+                {{ row.rowNo ? `Row ${row.rowNo}` : 'No Row' }}
+              </h3>
+              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                <div
+                  v-for="tank in row.tanks"
+                  :key="tank.id"
+                  class="card bg-base-200 hover:bg-base-300 cursor-pointer transition-colors"
+                  @click="openTankModal(tank)"
+                >
+                  <div class="card-body p-3">
+                    <div class="text-sm font-semibold truncate">{{ tank.label || tank.name }}</div>
+                    <div v-if="tank.bank_role" class="badge badge-xs">{{ tank.bank_role }}</div>
+                    <div v-if="tank.status !== 'active'" class="badge badge-xs badge-ghost">{{ tank.status }}</div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
     </PageLoadState>
 
-    <!-- Edit Tank Modal -->
     <dialog ref="tankModal" class="modal">
       <div class="modal-box max-w-2xl">
         <h3 class="font-bold text-lg mb-4">Edit Tank Label</h3>
-        <form @submit.prevent="handleTankSubmit" class="space-y-4">
+        <form class="space-y-4" @submit.prevent="handleTankSubmit">
           <div class="alert alert-info">
             <Icon name="mdi:information" class="w-5 h-5" />
             <div class="text-sm">
@@ -176,7 +171,7 @@
           </div>
 
           <div class="modal-action">
-            <button type="button" @click="closeTankModal" class="btn btn-ghost">
+            <button type="button" class="btn btn-ghost" @click="closeTankModal">
               Cancel
             </button>
             <button type="submit" class="btn btn-primary" :disabled="submitting">
@@ -220,18 +215,17 @@ const tankForm = ref({
   bank_role: null
 })
 
-// Computed
 const filteredTanks = computed(() => {
   let result = [...tanks.value]
-  
+
   if (systemFilter.value) {
     result = result.filter(t => t.system === systemFilter.value)
   }
-  
+
   if (roleFilter.value) {
     result = result.filter(t => t.bank_role === roleFilter.value)
   }
-  
+
   return result
 })
 
@@ -244,20 +238,18 @@ const groupedTanks = computed(() => {
     }
     groups[system].push(tank)
   })
-  
-  // Sort tanks within each system by row_no and tank_no
-  Object.values(groups).forEach(tanks => {
-    tanks.sort((a, b) => {
+
+  Object.values(groups).forEach(groupTanks => {
+    groupTanks.sort((a, b) => {
       if (a.row_no !== b.row_no) {
         return (a.row_no || 999) - (b.row_no || 999)
       }
       return (a.tank_no || 999) - (b.tank_no || 999)
     })
   })
-  
-  // Convert to array and sort by system
+
   return Object.entries(groups)
-    .map(([system, tanks]) => ({ system: system === 'unlabeled' ? null : system, tanks }))
+    .map(([system, groupTanks]) => ({ system: system === 'unlabeled' ? null : system, tanks: groupTanks }))
     .sort((a, b) => {
       if (!a.system) return 1
       if (!b.system) return -1
@@ -265,19 +257,18 @@ const groupedTanks = computed(() => {
     })
 })
 
-// Methods
-const groupByRow = (tanks) => {
+const groupByRow = (rowTanks) => {
   const rows = {}
-  tanks.forEach(tank => {
+  rowTanks.forEach(tank => {
     const rowNo = tank.row_no || 'no-row'
     if (!rows[rowNo]) {
       rows[rowNo] = []
     }
     rows[rowNo].push(tank)
   })
-  
+
   return Object.entries(rows)
-    .map(([rowNo, tanks]) => ({ rowNo: rowNo === 'no-row' ? null : rowNo, tanks }))
+    .map(([rowNo, grouped]) => ({ rowNo: rowNo === 'no-row' ? null : rowNo, tanks: grouped }))
     .sort((a, b) => {
       if (!a.rowNo) return 1
       if (!b.rowNo) return -1
@@ -308,7 +299,6 @@ const closeTankModal = () => {
 }
 
 const onLabelInput = () => {
-  // If user enters a label, clear the components (let the trigger parse it)
   if (tankForm.value.label) {
     tankForm.value.system = null
     tankForm.value.row_no = null
@@ -317,7 +307,6 @@ const onLabelInput = () => {
 }
 
 const onComponentChange = () => {
-  // If user enters components, clear the label (let the trigger derive it)
   if (tankForm.value.system || tankForm.value.row_no || tankForm.value.tank_no) {
     tankForm.value.label = null
   }
@@ -325,10 +314,9 @@ const onComponentChange = () => {
 
 const handleTankSubmit = async () => {
   if (!editingTank.value) return
-  
+
   submitting.value = true
   try {
-    // Convert empty strings to null and uppercase label
     const updates = {
       label: tankForm.value.label ? tankForm.value.label.trim().toUpperCase() : null,
       system: tankForm.value.system || null,
@@ -336,12 +324,12 @@ const handleTankSubmit = async () => {
       tank_no: tankForm.value.tank_no ? parseInt(tankForm.value.tank_no, 10) : null,
       bank_role: tankForm.value.bank_role || null
     }
-    
+
     const result = await updateTank(editingTank.value.id, updates)
     if (result.error) {
       throw result.error
     }
-    
+
     showSuccess('Tank label updated successfully')
     closeTankModal()
     await loadTanks()
@@ -353,7 +341,6 @@ const handleTankSubmit = async () => {
   }
 }
 
-// Initialize
 onMounted(async () => {
   await loadTanks()
 })

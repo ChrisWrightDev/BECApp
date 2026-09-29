@@ -20,7 +20,7 @@ onMounted(async () => {
   try {
     const { session } = await getSession()
     if (session) {
-      await router.push('/chat')
+      await router.push('/')
     } else {
       await router.push('/auth/login')
     }
