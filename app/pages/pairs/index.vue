@@ -64,19 +64,22 @@
       </div>
     </div>
 
-    <!-- Error Message -->
-    <div v-if="error" class="alert alert-error mb-6">
-      <Icon name="mdi:alert-circle" class="w-6 h-6" />
-      <span>{{ error }}</span>
-    </div>
-
-    <!-- Loading State -->
-    <div v-if="loading" class="flex justify-center py-12">
-      <span class="loading loading-spinner loading-lg"></span>
-    </div>
-
+    <PageLoadState
+      :loading="loading"
+      :error="error"
+      :empty="displayPairs.length === 0"
+      empty-icon="mdi:fish"
+      empty-title="No mated pairs found"
+      empty-description="Create your first mated pair to get started"
+      @retry="retry"
+    >
+      <template #empty-action>
+        <button @click="openPairModal" class="btn btn-primary mt-4">
+          Create Pair
+        </button>
+      </template>
     <!-- Pairs Grid -->
-    <div v-else-if="displayPairs.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
       <div
         v-for="pair in displayPairs"
         :key="pair.id"
@@ -130,20 +133,7 @@
         </div>
       </div>
     </div>
-
-    <!-- Empty State -->
-    <div v-else class="card bg-base-100 shadow-xl">
-      <div class="card-body text-center py-12">
-        <Icon name="mdi:fish" class="w-16 h-16 mx-auto text-base-content/30 mb-4" />
-        <p class="text-lg text-base-content/70">No mated pairs found</p>
-        <p class="text-sm text-base-content/50 mt-2">
-          Create your first mated pair to get started
-        </p>
-        <button @click="openPairModal" class="btn btn-primary mt-4">
-          Create Pair
-        </button>
-      </div>
-    </div>
+    </PageLoadState>
 
     <!-- Create/Edit Pair Modal -->
     <dialog ref="pairModal" class="modal">
@@ -475,8 +465,6 @@ const {
   tanks,
   matedPairs,
   hatches,
-  loading,
-  error,
   activeTanks,
   activePairs,
   hatchesByPair,
@@ -559,17 +547,21 @@ const viewingHatches = computed(() => {
 })
 
 // Methods
-const loadPairs = async () => {
+const { loading, error, load: loadPairs, retry } = usePageLoad(async () => {
   const options = {}
   if (statusFilter.value) options.status = statusFilter.value
   if (tankFilter.value) options.tankId = tankFilter.value
-  await fetchPairs(options)
-}
+  const { error: fetchError } = await fetchPairs(options)
+  if (fetchError) throw fetchError
+})
 
 const loadTanks = async () => {
   loadingTanks.value = true
-  await fetchTanks({ status: 'active' })
-  loadingTanks.value = false
+  try {
+    await fetchTanks({ status: 'active' })
+  } finally {
+    loadingTanks.value = false
+  }
 }
 
 const loadHatches = async () => {

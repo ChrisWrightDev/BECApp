@@ -5,30 +5,17 @@
       <p class="text-sm sm:text-base text-base-content/70">{{ todayDate }}</p>
     </div>
 
-    <!-- Loading State -->
-    <div v-if="loading" class="flex justify-center py-12">
-      <span class="loading loading-spinner loading-lg"></span>
-    </div>
-
-    <!-- Error State -->
-    <div v-else-if="error" class="alert alert-error mb-6">
-      <Icon name="mdi:alert-circle" class="w-6 h-6" />
-      <span>{{ error }}</span>
-    </div>
-
-    <!-- No Published Checklist -->
-    <div v-else-if="!checklistDay" class="card bg-base-100 shadow-xl">
-      <div class="card-body text-center py-12">
-        <Icon name="mdi:clipboard-text-clock" class="w-16 h-16 mx-auto text-base-content/30 mb-4" />
-        <p class="text-lg text-base-content/70">Today's checklist isn't ready yet</p>
-        <p class="text-sm text-base-content/50 mt-2">
-          Check back soon or contact your supervisor
-        </p>
-      </div>
-    </div>
-
+    <PageLoadState
+      :loading="loading"
+      :error="error"
+      :empty="!checklistDay"
+      empty-icon="mdi:clipboard-text-clock"
+      empty-title="No checklist published for today"
+      empty-description="Check back soon or contact your supervisor"
+      @retry="retry"
+    >
     <!-- Checklist Content -->
-    <div v-else>
+    <div>
       <!-- Overall Progress -->
       <div class="card bg-base-100 shadow-xl mb-4">
         <div class="card-body p-4">
@@ -172,6 +159,7 @@
         </div>
       </div>
     </div>
+    </PageLoadState>
   </div>
 </template>
 
@@ -184,8 +172,6 @@ definePageMeta({
 const {
   checklistDay,
   checklistItems,
-  loading,
-  error,
   itemsByBlock,
   progressByBlock,
   overallProgress,
@@ -198,6 +184,11 @@ const {
   formatBlockName,
   getCategoryColor
 } = useChecklist()
+
+const { loading, error, load, retry } = usePageLoad(async () => {
+  const { error: fetchError } = await fetchTodayChecklist()
+  if (fetchError) throw fetchError
+})
 
 const { showSuccess, showError } = useNotifications()
 
@@ -257,8 +248,8 @@ const formatTime = (timestamp) => {
 
 // Initialize
 onMounted(async () => {
-  await fetchTodayChecklist()
-  
+  await load()
+
   // Subscribe to realtime updates if we have a checklist day
   if (checklistDay.value?.id) {
     realtimeChannel = subscribeToRealtime(checklistDay.value.id)

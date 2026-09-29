@@ -1,3 +1,5 @@
+import { withTimeout } from '~/utils/loadState'
+
 export const useMessages = () => {
   const supabase = useSupabaseClient()
   const { user } = useAuth()
@@ -16,12 +18,14 @@ export const useMessages = () => {
   const fetchMessages = async (thread = 'ops', limit = 200) => {
     loading.value = true
     try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('thread', thread)
-        .order('created_at', { ascending: false })
-        .limit(limit)
+      const { data, error } = await withTimeout(
+        supabase
+          .from('messages')
+          .select('*')
+          .eq('thread', thread)
+          .order('created_at', { ascending: false })
+          .limit(limit)
+      )
 
       if (error) throw error
 

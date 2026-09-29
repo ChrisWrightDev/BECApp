@@ -23,19 +23,17 @@
       </div>
     </div>
 
-    <!-- Error Message -->
-    <div v-if="error" class="alert alert-error mb-6">
-      <Icon name="mdi:alert-circle" class="w-6 h-6" />
-      <span>{{ error }}</span>
-    </div>
-
-    <!-- Loading State -->
-    <div v-if="loading" class="flex justify-center py-12">
-      <span class="loading loading-spinner loading-lg"></span>
-    </div>
-
+    <PageLoadState
+      :loading="loading"
+      :error="error"
+      :empty="!systemStats"
+      empty-icon="mdi:chart-line"
+      empty-title="No analytics data available"
+      empty-description="Stats will appear here once the system has activity"
+      @retry="retry"
+    >
     <!-- Analytics Content -->
-    <div v-else class="space-y-6">
+    <div class="space-y-6">
       <!-- System Overview Stats -->
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <div class="stat bg-base-100 shadow rounded-box">
@@ -288,6 +286,7 @@
         </div>
       </div>
     </div>
+    </PageLoadState>
   </div>
 </template>
 
@@ -298,8 +297,6 @@ definePageMeta({
 })
 
 const {
-  loading,
-  error,
   fetchSystemStats,
   fetchProjectStats,
   fetchTaskStats,
@@ -327,7 +324,7 @@ const sortedActivityStats = computed(() => {
 })
 
 // Methods
-const loadAnalytics = async () => {
+const { loading, error, load: loadAnalytics, retry } = usePageLoad(async () => {
   const [systemResult, projectResult, taskResult, templateResult, activityResult] = await Promise.all([
     fetchSystemStats(),
     fetchProjectStats(),
@@ -336,12 +333,16 @@ const loadAnalytics = async () => {
     fetchActivityStats(dateRangeDays.value)
   ])
 
+  const firstError = [systemResult, projectResult, taskResult, templateResult, activityResult]
+    .find(result => result.error)?.error
+  if (firstError) throw firstError
+
   if (systemResult.data) systemStats.value = systemResult.data
   if (projectResult.data) projectStats.value = projectResult.data
   if (taskResult.data) taskStats.value = taskResult.data
   if (templateResult.data) templateStats.value = templateResult.data
   if (activityResult.data) activityStats.value = activityResult.data
-}
+})
 
 const getMaxTimeWindow = () => {
   if (!taskStats.value?.byTimeWindow) return 1

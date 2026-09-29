@@ -1,3 +1,5 @@
+import { withTimeout } from '~/utils/loadState'
+
 export const useChecklist = () => {
   const supabase = useSupabaseClient()
   const { user } = useAuth()
@@ -59,12 +61,14 @@ export const useChecklist = () => {
       const workDate = `${year}-${month}-${dayOfMonth}`
 
       // Fetch the published day for today
-      const { data: day, error: dayError } = await supabase
-        .from('checklist_days')
-        .select('*')
-        .eq('work_date', workDate)
-        .eq('status', 'published')
-        .maybeSingle()
+      const { data: day, error: dayError } = await withTimeout(
+        supabase
+          .from('checklist_days')
+          .select('*')
+          .eq('work_date', workDate)
+          .eq('status', 'published')
+          .maybeSingle()
+      )
 
       if (dayError) {
         throw dayError
@@ -79,12 +83,14 @@ export const useChecklist = () => {
       checklistDay.value = day
 
       // Fetch items for this day
-      const { data: items, error: itemsError } = await supabase
-        .from('checklist_items')
-        .select('*')
-        .eq('day_id', day.id)
-        .order('block', { ascending: true })
-        .order('sort_order', { ascending: true })
+      const { data: items, error: itemsError } = await withTimeout(
+        supabase
+          .from('checklist_items')
+          .select('*')
+          .eq('day_id', day.id)
+          .order('block', { ascending: true })
+          .order('sort_order', { ascending: true })
+      )
 
       if (itemsError) throw itemsError
 

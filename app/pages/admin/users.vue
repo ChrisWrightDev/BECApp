@@ -11,23 +11,17 @@
       </button>
     </div>
 
-    <!-- Error Message -->
-    <div v-if="error" class="alert alert-error mb-6">
-      <Icon name="mdi:alert-circle" class="w-6 h-6" />
-      <span>{{ error }}</span>
-      <div class="text-sm mt-2">
-        <p>Note: Full user management requires Supabase Admin API access.</p>
-        <p>This page shows users based on their activity in the system.</p>
-      </div>
-    </div>
-
-    <!-- Loading State -->
-    <div v-if="loading" class="flex justify-center py-12">
-      <span class="loading loading-spinner loading-lg"></span>
-    </div>
-
+    <PageLoadState
+      :loading="loading"
+      :error="error"
+      :empty="users.length === 0"
+      empty-icon="mdi:account-group"
+      empty-title="No users found"
+      empty-description="Users will appear here as they create projects or complete tasks"
+      @retry="retry"
+    >
     <!-- Users Table -->
-    <div v-else-if="users.length > 0" class="card bg-base-100 shadow-xl">
+    <div class="card bg-base-100 shadow-xl">
       <div class="card-body">
         <div class="overflow-x-auto">
           <table class="table">
@@ -120,17 +114,7 @@
         </div>
       </div>
     </div>
-
-    <!-- Empty State -->
-    <div v-else class="card bg-base-100 shadow-xl">
-      <div class="card-body text-center py-12">
-        <Icon name="mdi:account-group" class="w-16 h-16 mx-auto text-base-content/30 mb-4" />
-        <p class="text-lg text-base-content/70">No users found</p>
-        <p class="text-sm text-base-content/50 mt-2">
-          Users will appear here as they create projects or complete tasks
-        </p>
-      </div>
-    </div>
+    </PageLoadState>
 
     <!-- Edit User Modal -->
     <dialog ref="editUserModal" class="modal">
@@ -267,12 +251,15 @@ definePageMeta({
 const { user: currentUser } = useAuth()
 const {
   users,
-  loading,
-  error,
   fetchUsersWithStats,
   updateUserRole,
   updateUserProfile
 } = useUsers()
+
+const { loading, error, load: loadUsers, retry } = usePageLoad(async () => {
+  const { error: fetchError } = await fetchUsersWithStats()
+  if (fetchError) throw fetchError
+})
 
 const userDetailsModal = ref(null)
 const editUserModal = ref(null)
@@ -287,11 +274,6 @@ const editForm = ref({
 })
 
 const currentUserId = computed(() => currentUser.value?.id)
-
-// Methods
-const loadUsers = async () => {
-  await fetchUsersWithStats()
-}
 
 const { showSuccess, showError, showWarning } = useNotifications()
 

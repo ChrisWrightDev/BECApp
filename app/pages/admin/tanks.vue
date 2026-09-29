@@ -27,19 +27,17 @@
       </div>
     </div>
 
-    <!-- Error Message -->
-    <div v-if="error" class="alert alert-error mb-6">
-      <Icon name="mdi:alert-circle" class="w-6 h-6" />
-      <span>{{ error }}</span>
-    </div>
-
-    <!-- Loading State -->
-    <div v-if="loading" class="flex justify-center py-12">
-      <span class="loading loading-spinner loading-lg"></span>
-    </div>
-
+    <PageLoadState
+      :loading="loading"
+      :error="error"
+      :empty="groupedTanks.length === 0"
+      empty-icon="mdi:water"
+      empty-title="No tanks found"
+      empty-description="Tanks will appear here once they are added to the system"
+      @retry="retry"
+    >
     <!-- Tanks by System -->
-    <div v-else-if="groupedTanks.length > 0" class="space-y-6">
+    <div class="space-y-6">
       <div v-for="group in groupedTanks" :key="group.system || 'unlabeled'" class="card bg-base-100 shadow-xl">
         <div class="card-body p-4 sm:p-6">
           <h2 class="card-title text-lg sm:text-xl mb-4">
@@ -70,14 +68,7 @@
         </div>
       </div>
     </div>
-
-    <!-- Empty State -->
-    <div v-else class="card bg-base-100 shadow-xl">
-      <div class="card-body text-center py-12">
-        <Icon name="mdi:water" class="w-16 h-16 mx-auto text-base-content/30 mb-4" />
-        <p class="text-lg text-base-content/70">No tanks found</p>
-      </div>
-    </div>
+    </PageLoadState>
 
     <!-- Edit Tank Modal -->
     <dialog ref="tankModal" class="modal">
@@ -209,7 +200,11 @@ definePageMeta({
 })
 
 const { showSuccess, showError } = useNotifications()
-const { tanks, loading, error, fetchTanks, updateTank } = usePairs()
+const { tanks, fetchTanks, updateTank } = usePairs()
+const { loading, error, load: loadTanks, retry } = usePageLoad(async () => {
+  const { error: fetchError } = await fetchTanks()
+  if (fetchError) throw fetchError
+})
 
 const systemFilter = ref(null)
 const roleFilter = ref(null)
@@ -349,7 +344,7 @@ const handleTankSubmit = async () => {
     
     showSuccess('Tank label updated successfully')
     closeTankModal()
-    await fetchTanks()
+    await loadTanks()
   } catch (err) {
     console.error('Error updating tank:', err)
     showError('Error updating tank: ' + (err.message || 'Unknown error'))
@@ -360,6 +355,6 @@ const handleTankSubmit = async () => {
 
 // Initialize
 onMounted(async () => {
-  await fetchTanks()
+  await loadTanks()
 })
 </script>

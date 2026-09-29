@@ -1,3 +1,5 @@
+import { withTimeout } from '~/utils/loadState'
+
 export const useProjects = () => {
   const supabase = useSupabaseClient()
   const { user } = useAuth()
@@ -82,7 +84,7 @@ export const useProjects = () => {
         query = query.eq('status', options.status)
       }
 
-      const { data, error: fetchError } = await query
+      const { data, error: fetchError } = await withTimeout(query)
 
       if (fetchError) throw fetchError
 
@@ -112,27 +114,29 @@ export const useProjects = () => {
       loading.value = true
       error.value = null
 
-      const { data, error: fetchError } = await supabase
-        .from('projects')
-        .select(`
-          *,
-          templates:template_id (
-            id,
-            name,
-            type
-          ),
-          phases:current_phase_id (
-            id,
-            name,
-            order_index
-          ),
-          tanks:tank_id (
-            id,
-            name
-          )
-        `)
-        .eq('id', projectId)
-        .single()
+      const { data, error: fetchError } = await withTimeout(
+        supabase
+          .from('projects')
+          .select(`
+            *,
+            templates:template_id (
+              id,
+              name,
+              type
+            ),
+            phases:current_phase_id (
+              id,
+              name,
+              order_index
+            ),
+            tanks:tank_id (
+              id,
+              name
+            )
+          `)
+          .eq('id', projectId)
+          .single()
+      )
 
       if (fetchError) throw fetchError
 
@@ -369,10 +373,12 @@ export const useProjects = () => {
       loading.value = true
       error.value = null
 
-      const { data, error: fetchError } = await supabase
-        .from('templates')
-        .select('*')
-        .order('name', { ascending: true })
+      const { data, error: fetchError } = await withTimeout(
+        supabase
+          .from('templates')
+          .select('*')
+          .order('name', { ascending: true })
+      )
 
       if (fetchError) throw fetchError
 
