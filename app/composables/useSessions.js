@@ -17,14 +17,16 @@ export const useSessions = () => {
       error.value = null
 
       // Check if there's an open session (no logout_time)
-      const { data: existingSession } = await supabase
+      const { data: existingSession, error: existingError } = await supabase
         .from('user_sessions')
         .select('*')
         .eq('user_id', user.value.id)
         .is('logout_time', null)
         .order('login_time', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
+
+      if (existingError) throw existingError
 
       // If there's an open session, don't create a new one
       if (existingSession) {
@@ -66,14 +68,16 @@ export const useSessions = () => {
       error.value = null
 
       // Find the current open session
-      const { data: openSession } = await supabase
+      const { data: openSession, error: openSessionError } = await supabase
         .from('user_sessions')
         .select('*')
         .eq('user_id', user.value.id)
         .is('logout_time', null)
         .order('login_time', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
+
+      if (openSessionError) throw openSessionError
 
       if (!openSession) {
         return { data: null, error: new Error('No open session found') }

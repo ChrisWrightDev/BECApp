@@ -64,16 +64,16 @@ export const useChecklist = () => {
         .select('*')
         .eq('work_date', workDate)
         .eq('status', 'published')
-        .single()
+        .maybeSingle()
 
       if (dayError) {
-        if (dayError.code === 'PGRST116') {
-          // No rows returned - no published checklist yet
-          checklistDay.value = null
-          checklistItems.value = []
-          return { day: null, items: [], error: null }
-        }
         throw dayError
+      }
+
+      if (!day) {
+        checklistDay.value = null
+        checklistItems.value = []
+        return { day: null, items: [], error: null }
       }
 
       checklistDay.value = day

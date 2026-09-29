@@ -769,15 +769,17 @@ export const useProjects = () => {
 
         if (daysInPhase >= project.phases.duration_days) {
           // Get next phase
-          const { data: nextPhase } = await supabase
+          const { data: nextPhase, error: nextPhaseError } = await supabase
             .from('phases')
             .select('id, name, order_index')
             .eq('template_id', project.templates.id)
             .gt('order_index', project.phases.order_index)
             .order('order_index', { ascending: true })
             .limit(1)
-            .single()
-
+            .maybeSingle()
+          
+          if (nextPhaseError) throw nextPhaseError
+          
           if (nextPhase) {
             // Advance to next phase
             await updateProject(project.id, { current_phase_id: nextPhase.id })

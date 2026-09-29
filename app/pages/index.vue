@@ -711,9 +711,11 @@ const fetchNextPhaseDescription = async (task) => {
       .gt('order_index', task.project_current_phase_order)
       .order('order_index', { ascending: true })
       .limit(1)
-      .single()
+      .maybeSingle()
     
-    if (!phaseError && nextPhase) {
+    if (phaseError) throw phaseError
+    
+    if (nextPhase) {
       // Cache the description (or name if no description)
       const description = nextPhase.description || nextPhase.name
       nextPhaseDescriptionCache.value.set(cacheKey, description)
@@ -761,9 +763,11 @@ const advanceProjectPhase = async (task) => {
       .gt('order_index', currentPhaseOrder)
       .order('order_index', { ascending: true })
       .limit(1)
-      .single()
+      .maybeSingle()
 
-    if (phaseError || !nextPhase) {
+    if (phaseError) throw phaseError
+
+    if (!nextPhase) {
       // No next phase - project might be complete
       const result = await updateProject(task.project_id, { 
         status: 'completed',
