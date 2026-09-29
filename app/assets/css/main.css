@@ -85,62 +85,6 @@ textarea.chat-composer-input:disabled {
   font-size: 16px !important;
 }
 
-:root {
-  /* Fallback until JS measures the real dock; matches icon+label tab bar + home indicator. */
-  --app-vvh: 100dvh;
-  --app-chat-bottom-inset: calc(5.5rem + env(safe-area-inset-bottom, 0px));
-}
-
-.chat-shell {
-  display: flex;
-  flex-direction: column;
-  height: var(--app-vvh);
-  max-height: var(--app-vvh);
-  overflow: hidden;
-}
-
-.chat-main {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 0%;
-  min-height: 0;
-  overflow: hidden;
-  padding-bottom: var(--app-chat-bottom-inset);
-}
-
-.chat-main > * {
-  flex: 1 1 0%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-@media (min-width: 768px) {
-  :root {
-    --app-chat-bottom-inset: 0px;
-  }
-
-  .chat-main {
-    padding-bottom: 0;
-  }
-}
-
-html.chat-open,
-html.chat-open body {
-  overflow: hidden;
-  height: 100%;
-  overscroll-behavior: none;
-}
-
-html.chat-keyboard-open .chat-shell {
-  position: fixed;
-  top: var(--app-vv-top, 0px);
-  left: 0;
-  right: 0;
-  z-index: 40;
-}
-
 @media (max-width: 768px) {
   .pirate-font-light,
   .pirate-font-dark {

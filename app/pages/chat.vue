@@ -1,99 +1,168 @@
 <template>
-  <div class="flex flex-col h-full min-h-0">
+  <div class="min-h-screen bg-base-100 max-w-[600px] mx-auto">
     <!-- Header -->
-    <div class="flex-shrink-0 px-4 pt-2 pb-2 bg-base-100">
-      <h1 class="text-xl font-semibold text-center">Messages</h1>
-      <div v-if="!canSend" class="alert alert-info mt-2 text-xs">
-        <Icon name="mdi:information-outline" class="w-4 h-4" />
-        <span>View only - your account can't send messages</span>
+    <div
+      ref="headerEl"
+      class="sticky top-0 z-10 bg-base-100 border-b border-base-300"
+      :style="{ paddingTop: 'env(safe-area-inset-top, 0px)' }"
+    >
+      <div class="flex items-center justify-between p-4">
+        <div class="flex items-center space-x-3 min-w-0">
+          <NuxtLink to="/" class="btn btn-ghost btn-sm">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+            Back
+          </NuxtLink>
+          <div class="flex items-center space-x-3 min-w-0">
+            <div class="w-10 h-10 rounded-full bg-primary text-primary-content flex items-center justify-center flex-shrink-0">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+              </svg>
+            </div>
+            <div class="min-w-0">
+              <h1 class="text-lg font-semibold truncate">Ops Chat</h1>
+              <p class="text-sm text-base-content/70 truncate">Hatchery operations</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div v-if="!canSend" class="px-4 pb-3">
+        <div class="alert alert-info text-xs py-2">
+          <Icon name="mdi:information-outline" class="w-4 h-4" />
+          <span>View only — your account can't send messages</span>
+        </div>
       </div>
     </div>
 
-    <!-- Messages container -->
+    <!-- Loading State -->
+    <div v-if="isLoading" class="flex items-center justify-center h-64">
+      <span class="loading loading-spinner loading-lg"></span>
+    </div>
+
+    <!-- Error State -->
+    <div v-else-if="loadError" class="flex items-center justify-center h-64">
+      <div class="text-center">
+        <div class="text-error text-lg font-semibold mb-2">Failed to load messages</div>
+        <div class="text-base-content/70 mb-4">{{ loadError }}</div>
+        <button class="btn btn-primary" @click="loadMessages">Try Again</button>
+      </div>
+    </div>
+
+    <!-- Messages Container -->
     <div
-      ref="messagesContainer"
-      class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-2 bg-base-200"
-      @scroll="handleScroll"
+      v-else
+      class="flex flex-col h-[calc(100vh-140px)]"
+      :style="threadPaneStyle"
     >
-      <div v-if="loading" class="flex justify-center py-12">
-        <span class="loading loading-spinner loading-lg"></span>
-      </div>
+      <!-- Messages List -->
+      <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-4 overscroll-contain">
+        <div v-if="allMessages.length === 0" class="flex items-center justify-center h-full">
+          <div class="text-center text-base-content/70">
+            <svg class="w-16 h-16 mx-auto mb-4 text-base-content/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+            </svg>
+            <div class="text-lg font-semibold mb-2">No messages yet</div>
+            <div>Start the conversation by sending a message!</div>
+          </div>
+        </div>
 
-      <div v-else-if="displayMessages.length === 0" class="flex flex-col items-center justify-center py-12 text-center">
-        <Icon name="mdi:message-outline" class="w-16 h-16 text-base-content/30 mb-4" />
-        <p class="text-lg text-base-content/70">No messages yet</p>
-        <p class="text-sm text-base-content/50 mt-2">Start a conversation!</p>
-      </div>
-
-      <div v-else class="space-y-1">
-        <template v-for="(message, index) in displayMessages" :key="message.id || message.tempId">
-          <!-- Timestamp separator -->
-          <div v-if="message.showTimestamp" class="flex justify-center my-3">
-            <span class="text-xs text-base-content/50 px-2 py-1">
-              {{ message.timestamp }}
-            </span>
+        <!-- Message Groups -->
+        <div v-for="(group, groupIndex) in messageGroups" :key="groupIndex" class="space-y-1">
+          <!-- Date Separator -->
+          <div v-if="group.date" class="flex items-center justify-center my-4">
+            <div class="bg-base-200 text-base-content/70 px-3 py-1 rounded-full text-sm">
+              {{ formatDate(group.date) }}
+            </div>
           </div>
 
-          <!-- Message bubble -->
-          <div class="flex" :class="isMyMessage(message) ? 'justify-end' : 'justify-start'">
-            <div class="max-w-[75%] flex flex-col" :class="isMyMessage(message) ? 'items-end' : 'items-start'">
-              <!-- Sender name for incoming messages at start of group -->
-              <div 
-                v-if="!isMyMessage(message) && message.isGroupStart"
-                class="text-xs text-base-content/50 px-3 mb-1"
-              >
-                {{ getSenderDisplayName(message.sender_role) }}
-              </div>
-
-              <!-- Message bubble -->
+          <!-- Messages in Group -->
+          <div
+            v-for="(message, messageIndex) in group.messages"
+            :key="message.id || message.tempId"
+            :data-message-id="message.id || message.tempId"
+            class="flex message-item"
+            :class="isOwnMessage(message) ? 'justify-end' : 'justify-start'"
+          >
+            <div class="flex max-w-[70%]" :class="isOwnMessage(message) ? 'flex-row-reverse' : 'flex-row'">
+              <!-- Avatar -->
               <div
-                class="px-4 py-2 break-words whitespace-pre-wrap text-[15px] leading-[20px]"
-                :class="getMessageBubbleClass(message)"
-                @click="message.sendFailed ? retryMessage(message) : null"
+                v-if="!isOwnMessage(message) && (messageIndex === 0 || senderKey(group.messages[messageIndex - 1]) !== senderKey(message))"
+                class="flex-shrink-0 mr-2"
               >
-                <span>{{ message.body }}</span>
-                <span v-if="message.sendFailed" class="ml-2 text-xs opacity-75">Tap to retry</span>
+                <div class="w-8 h-8 rounded-full bg-primary text-primary-content flex items-center justify-center text-sm">
+                  {{ getUserInitials(message) }}
+                </div>
               </div>
+              <div v-else-if="!isOwnMessage(message)" class="w-8 mr-2"></div>
 
-              <!-- Status for last outgoing message -->
-              <div 
-                v-if="isMyMessage(message) && index === displayMessages.length - 1"
-                class="text-[11px] text-base-content/50 px-3 mt-1"
-              >
-                {{ getMessageStatus(message) }}
+              <!-- Message Bubble -->
+              <div class="flex flex-col" :class="isOwnMessage(message) ? 'items-end' : 'items-start'">
+                <!-- Sender Name (only for first message in group) -->
+                <div
+                  v-if="!isOwnMessage(message) && (messageIndex === 0 || senderKey(group.messages[messageIndex - 1]) !== senderKey(message))"
+                  class="text-xs text-base-content/70 mb-1 ml-1"
+                >
+                  {{ getMessageName(message) }}
+                </div>
+
+                <!-- Message Content -->
+                <div
+                  class="px-4 py-2 rounded-2xl max-w-full break-words"
+                  :class="[
+                    isOwnMessage(message)
+                      ? 'bg-primary text-primary-content rounded-br-md'
+                      : 'bg-base-200 text-base-content rounded-bl-md',
+                    message.sendFailed ? 'opacity-60 cursor-pointer' : ''
+                  ]"
+                  @click="message.sendFailed ? retryMessage(message) : null"
+                >
+                  <div class="whitespace-pre-wrap">{{ message.body }}</div>
+                  <div v-if="message.sendFailed" class="text-xs mt-1 opacity-80">Tap to retry</div>
+                </div>
+
+                <!-- Timestamp -->
+                <div class="text-xs text-base-content/50 mt-1" :class="isOwnMessage(message) ? 'mr-1' : 'ml-1'">
+                  {{ formatTime(message.created_at) }}
+                </div>
               </div>
             </div>
           </div>
-        </template>
+        </div>
       </div>
-    </div>
 
-    <!-- Message input (only if user can send) -->
-    <div 
-      v-if="canSend" 
-      class="flex-shrink-0 bg-base-100 px-4 py-2 pb-2"
-    >
-      <div class="flex items-end gap-2">
-        <textarea
-          ref="messageInput"
-          v-model="newMessageBody"
-          placeholder="iMessage"
-          class="chat-composer-input flex-1 px-4 py-2 rounded-full bg-base-200 border-0 focus:outline-none focus:ring-0 resize-none overflow-hidden leading-[20px]"
-          style="font-size: 16px"
-          :disabled="sending || !canSend"
-          :maxlength="4000"
-          @input="adjustTextareaHeight"
-          rows="1"
-          enterkeyhint="enter"
-        ></textarea>
-        <button
-          @click="handleSendMessage"
-          class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all"
-          :class="canSendCurrentMessage ? 'bg-[#0B84FE] hover:bg-[#0066cc]' : 'bg-base-300 opacity-50 cursor-not-allowed'"
-          :disabled="!canSendCurrentMessage"
-        >
-          <Icon name="mdi:arrow-up" class="w-5 h-5 text-white" />
-        </button>
+      <!-- Message Input -->
+      <div
+        v-if="canSend"
+        class="border-t border-base-300 px-4 pt-4 bg-base-100"
+        :style="{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }"
+      >
+        <form class="flex space-x-2" @submit.prevent="handleSendMessage">
+          <div class="flex-1">
+            <textarea
+              ref="messageInput"
+              v-model="newMessage"
+              placeholder="Type a message..."
+              class="chat-composer-input input input-bordered w-full min-h-[3rem] py-2 resize-none overflow-hidden leading-5"
+              style="font-size: 16px"
+              rows="1"
+              maxlength="4000"
+              enterkeyhint="enter"
+              :disabled="sending"
+              @input="adjustTextareaHeight"
+            ></textarea>
+          </div>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            :disabled="!canSendCurrentMessage"
+          >
+            <span v-if="sending" class="loading loading-spinner loading-sm"></span>
+            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+            </svg>
+          </button>
+        </form>
       </div>
     </div>
   </div>
@@ -104,14 +173,17 @@ import { getSenderRole, getSenderDisplayName, canSendMessages } from '~/utils/ch
 
 definePageMeta({
   middleware: 'auth',
-  layout: 'default'
+  layout: 'blank'
 })
 
-const { user } = useAuth()
-const { 
-  messages, 
-  optimisticMessages, 
-  loading, 
+useHead({
+  title: 'Ops Chat'
+})
+
+const { user, profile } = useAuth()
+const {
+  messages,
+  optimisticMessages,
   sending,
   fetchMessages,
   fetchNewMessages,
@@ -121,195 +193,186 @@ const {
   replaceOptimistic,
   markOptimisticFailed,
   removeOptimistic,
-  sendMessage, 
-  markMessagesAsRead 
+  sendMessage,
+  markMessagesAsRead
 } = useMessages()
 const { clearUnreadCount } = useUnreadCount()
 const supabase = useSupabaseClient()
 const { showError } = useNotifications()
 
+const headerEl = ref(null)
 const messagesContainer = ref(null)
 const messageInput = ref(null)
-const newMessageBody = ref('')
+const newMessage = ref('')
+const isLoading = ref(true)
+const loadError = ref('')
+const profilesById = ref({})
 const realtimeChannel = ref(null)
 const authSubscription = ref(null)
-const viewportHandlers = ref(null)
 const isNearBottom = ref(true)
+const threadPaneStyle = ref({})
 let nextTempId = 1
+let viewportCleanup = () => {}
 
-// Computed
 const userEmail = computed(() => user.value?.email?.toLowerCase() || '')
 const senderRole = computed(() => getSenderRole(userEmail.value))
 const canSend = computed(() => canSendMessages(userEmail.value))
 
-// Merge real messages with optimistic ones
 const allMessages = computed(() => {
-  const realMsgs = messages.value || []
-  const optMsgs = optimisticMessages.value || []
-  
-  const combined = [...realMsgs, ...optMsgs]
-  
-  // Sort by created_at
+  const combined = [...(messages.value || []), ...(optimisticMessages.value || [])]
   return combined.sort((a, b) => {
-    const aTime = new Date(a.created_at).getTime()
-    const bTime = new Date(b.created_at).getTime()
-    return aTime - bTime
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   })
 })
 
-// Add grouping and timestamp separators
-const displayMessages = computed(() => {
-  const result = []
-  let lastSender = null
-  let lastTime = null
-  
+const messageGroups = computed(() => {
+  if (!allMessages.value.length) return []
+
+  const groups = []
+  let currentGroup = null
+
   allMessages.value.forEach((message, index) => {
-    const currentTime = new Date(message.created_at)
-    const isGroupStart = message.sender_id !== lastSender
-    
-    // Check if this is the last message in a group
-    const nextMessage = allMessages.value[index + 1]
-    const isGroupEnd = !nextMessage || nextMessage.sender_id !== message.sender_id
-    
-    // Add timestamp separator if gap > 15 minutes or different day
-    let showTimestamp = false
-    let timestamp = ''
-    if (index === 0 || !lastTime) {
-      showTimestamp = true
-      timestamp = formatTimestampSeparator(currentTime)
-    } else {
-      const timeDiff = (currentTime.getTime() - lastTime.getTime()) / 1000 / 60 // minutes
-      if (timeDiff > 15 || currentTime.toDateString() !== lastTime.toDateString()) {
-        showTimestamp = true
-        timestamp = formatTimestampSeparator(currentTime)
+    const messageDate = new Date(message.created_at).toDateString()
+    const prevMessage = index > 0 ? allMessages.value[index - 1] : null
+    const prevDate = prevMessage ? new Date(prevMessage.created_at).toDateString() : null
+
+    if (!currentGroup ||
+        messageDate !== prevDate ||
+        senderKey(message) !== senderKey(prevMessage)) {
+      currentGroup = {
+        date: messageDate !== prevDate ? messageDate : null,
+        messages: []
       }
+      groups.push(currentGroup)
     }
-    
-    result.push({
-      ...message,
-      isGroupStart,
-      isGroupEnd,
-      showTimestamp,
-      timestamp
-    })
-    
-    lastSender = message.sender_id
-    lastTime = currentTime
+
+    currentGroup.messages.push(message)
   })
-  
-  return result
+
+  return groups
 })
 
 const canSendCurrentMessage = computed(() => {
-  return canSend.value && 
-         !sending.value && 
-         newMessageBody.value.trim().length > 0 && 
-         newMessageBody.value.length <= 4000
+  return canSend.value &&
+    !sending.value &&
+    newMessage.value.trim().length > 0 &&
+    newMessage.value.length <= 4000
 })
 
-// Methods
-const isMyMessage = (message) => {
-  return message.sender_id === user.value?.id
+const senderKey = (message) => {
+  if (!message) return ''
+  return message.sender_id || message.sender_role || ''
 }
 
-const getMessageBubbleClass = (message) => {
-  const baseClasses = []
-  
-  if (isMyMessage(message)) {
-    // User's messages: blue bubble with white text (iMessage style) - same in light and dark mode
-    baseClasses.push('bg-[#0B84FE] text-white')
-    
-    // Determine rounding based on group position
-    if (message.isGroupStart && message.isGroupEnd) {
-      // Single message in group
-      baseClasses.push('rounded-[18px]')
-    } else if (message.isGroupStart) {
-      // First in group - full rounding
-      baseClasses.push('rounded-[18px]')
-    } else if (message.isGroupEnd) {
-      // Last in group - small tail corner on bottom-right
-      baseClasses.push('rounded-[18px] rounded-br-[4px]')
-    } else {
-      // Middle of group - reduced corners on right side
-      baseClasses.push('rounded-l-[18px] rounded-tr-[18px] rounded-br-[6px]')
-    }
-  } else {
-    // Other users' messages: light gray in light mode, darker gray in dark mode
-    baseClasses.push('bg-[#E9E9EB] text-black dark:bg-[#3A3A3C] dark:text-white')
-    
-    if (message.isGroupStart && message.isGroupEnd) {
-      // Single message in group
-      baseClasses.push('rounded-[18px]')
-    } else if (message.isGroupStart) {
-      // First in group - full rounding
-      baseClasses.push('rounded-[18px]')
-    } else if (message.isGroupEnd) {
-      // Last in group - small tail corner on bottom-left
-      baseClasses.push('rounded-[18px] rounded-bl-[4px]')
-    } else {
-      // Middle of group - reduced corners on left side
-      baseClasses.push('rounded-r-[18px] rounded-tl-[18px] rounded-bl-[6px]')
-    }
-  }
-  
-  // Failed state
-  if (message.sendFailed) {
-    baseClasses.push('opacity-60 cursor-pointer')
-  }
-  
-  return baseClasses.join(' ')
+const isOwnMessage = (message) => {
+  return Boolean(user.value?.id && message.sender_id === user.value.id)
 }
 
-const formatTimestampSeparator = (date) => {
-  const now = new Date()
-  const isToday = date.toDateString() === now.toDateString()
-  
-  const yesterday = new Date(now)
-  yesterday.setDate(now.getDate() - 1)
-  const isYesterday = date.toDateString() === yesterday.toDateString()
-  
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Chicago',
+const getMessageName = (message) => {
+  if (message.sender_id && message.sender_id === user.value?.id && profile.value?.firstname) {
+    return [profile.value.firstname, profile.value.lastname].filter(Boolean).join(' ')
+  }
+  const row = message.sender_id ? profilesById.value[message.sender_id] : null
+  if (row?.firstname) {
+    return [row.firstname, row.lastname].filter(Boolean).join(' ')
+  }
+  return getSenderDisplayName(message.sender_role)
+}
+
+const getUserInitials = (message) => {
+  const name = getMessageName(message) || 'U'
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) {
+    return `${parts[0].charAt(0)}${parts[1].charAt(0)}`.toUpperCase()
+  }
+  return name.slice(0, 2).toUpperCase()
+}
+
+const formatDate = (dateString) => {
+  const date = new Date(dateString)
+  const today = new Date()
+  const yesterday = new Date(today)
+  yesterday.setDate(today.getDate() - 1)
+
+  if (date.toDateString() === today.toDateString()) return 'Today'
+  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday'
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'America/Chicago'
+  })
+}
+
+const formatTime = (dateString) => {
+  if (!dateString) return ''
+  return new Date(dateString).toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
-    hour12: true
+    hour12: true,
+    timeZone: 'America/Chicago'
   })
-  
-  if (isToday) {
-    return `Today ${formatter.format(date)}`
-  } else if (isYesterday) {
-    return `Yesterday ${formatter.format(date)}`
-  } else {
-    const fullFormatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/Chicago',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
+}
+
+const loadProfiles = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, firstname, lastname')
+
+    if (error) throw error
+    const map = {}
+    ;(data || []).forEach((row) => {
+      map[row.id] = row
     })
-    return fullFormatter.format(date)
+    profilesById.value = map
+  } catch (err) {
+    console.warn('Chat profiles unavailable:', err?.message || err)
   }
 }
 
-const getMessageStatus = (message) => {
-  if (message.sendFailed) return 'Not delivered'
-  if (message.tempId && !message.id) return 'Sending…'
-  
-  // Check agent_status for detailed status
-  if (message.agent_status === 'processing') return 'Agent is reading…'
-  if (message.agent_status === 'replied') return 'Replied'
-  if (message.agent_status === 'error') return 'Agent error'
-  if (message.agent_status === 'pending') return 'Delivered'
-  
-  return 'Delivered'
+const markUnreadAgentMessages = () => {
+  const unreadAgentMessages = (messages.value || [])
+    .filter((m) => ['agent', 'system'].includes(m.sender_role) && !m.read_at)
+    .map((m) => m.id)
+
+  if (unreadAgentMessages.length > 0) {
+    markMessagesAsRead(unreadAgentMessages)
+    clearUnreadCount()
+  } else {
+    clearUnreadCount()
+  }
 }
 
-const handleScroll = () => {
-  if (!messagesContainer.value) return
-  const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value
-  // Consider "near bottom" if within 100px
-  isNearBottom.value = scrollHeight - scrollTop - clientHeight < 100
+const loadMessages = async () => {
+  isLoading.value = true
+  loadError.value = ''
+  const { error } = await fetchMessages('ops', 200)
+  isLoading.value = false
+  if (error) {
+    loadError.value = error.message || 'Failed to load messages'
+    return
+  }
+  await nextTick()
+  applyViewport()
+  messagesContainer.value?.removeEventListener('scroll', onMessagesScroll)
+  messagesContainer.value?.addEventListener('scroll', onMessagesScroll)
+  scrollToBottom(false, true)
+  requestAnimationFrame(() => scrollToBottom(false, true))
+  markUnreadAgentMessages()
+}
+
+const applyViewport = () => {
+  if (typeof window === 'undefined') return
+  const vv = window.visualViewport
+  const viewportH = Math.round(vv?.height || window.innerHeight)
+  const headerH = headerEl.value?.offsetHeight || 72
+  const height = Math.max(160, viewportH - headerH)
+  threadPaneStyle.value = { height: `${height}px` }
+  if (isNearBottom.value) {
+    requestAnimationFrame(() => scrollToBottom(false, true))
+  }
 }
 
 const scrollToBottom = (smooth = true, force = false) => {
@@ -326,20 +389,18 @@ const scrollToBottom = (smooth = true, force = false) => {
 const adjustTextareaHeight = () => {
   const textarea = messageInput.value
   if (!textarea) return
-  
   textarea.style.height = 'auto'
-  const newHeight = Math.min(textarea.scrollHeight, 120) // Max ~6 lines
-  textarea.style.height = `${newHeight}px`
+  textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`
 }
 
 const handleSendMessage = async () => {
   if (!canSendCurrentMessage.value || sending.value) return
 
-  const body = newMessageBody.value.trim()
+  const body = newMessage.value.trim()
   if (!body) return
 
   const tempId = `temp-${nextTempId++}-${Date.now()}`
-  const optimisticMessage = {
+  addOptimisticMessage({
     tempId,
     thread: 'ops',
     sender_role: senderRole.value,
@@ -347,23 +408,13 @@ const handleSendMessage = async () => {
     body,
     created_at: new Date().toISOString(),
     sendFailed: false
-  }
-
-  // Optimistic update using composable helper
-  addOptimisticMessage(optimisticMessage)
-  newMessageBody.value = ''
-  
-  // Reset textarea height
-  if (messageInput.value) {
-    messageInput.value.style.height = 'auto'
-  }
-  
-  scrollToBottom(true, true) // Force scroll
-  
-  // Focus back on input
+  })
+  newMessage.value = ''
+  if (messageInput.value) messageInput.value.style.height = 'auto'
+  isNearBottom.value = true
+  scrollToBottom(true, true)
   nextTick(() => messageInput.value?.focus())
 
-  // Send to server
   const { data, error } = await sendMessage({
     thread: 'ops',
     sender_role: senderRole.value,
@@ -372,11 +423,9 @@ const handleSendMessage = async () => {
   })
 
   if (error || !data) {
-    // Mark as failed
     markOptimisticFailed(tempId)
     showError('Failed to send message. Tap to retry.')
   } else {
-    // Replace optimistic with real message
     replaceOptimistic(tempId, data)
     scrollToBottom()
   }
@@ -384,167 +433,101 @@ const handleSendMessage = async () => {
 
 const retryMessage = async (message) => {
   if (!message.sendFailed || !message.tempId) return
-  
-  // Remove the failed message
   removeOptimistic(message.tempId)
-  
-  // Re-add as new message
-  newMessageBody.value = message.body
+  newMessage.value = message.body
   await handleSendMessage()
 }
 
-const handleRealtimeInsert = (newMessage) => {
-  // Remove any matching optimistic message
-  const matchingOpt = optimisticMessages.value.find(opt => 
-    opt.sender_id === newMessage.sender_id &&
-    opt.body === newMessage.body &&
-    Math.abs(new Date(opt.created_at).getTime() - new Date(newMessage.created_at).getTime()) < 5000
+const handleRealtimeInsert = (newMsg) => {
+  const matchingOpt = optimisticMessages.value.find((opt) =>
+    opt.sender_id === newMsg.sender_id &&
+    opt.body === newMsg.body &&
+    Math.abs(new Date(opt.created_at).getTime() - new Date(newMsg.created_at).getTime()) < 5000
   )
-  
-  if (matchingOpt) {
-    removeOptimistic(matchingOpt.tempId)
-  }
+  if (matchingOpt) removeOptimistic(matchingOpt.tempId)
 
-  // Add using composable helper (dedupes by id)
-  addMessage(newMessage)
-  
-  // Auto-scroll only if near bottom or if it's from current user
-  const isFromMe = newMessage.sender_id === user.value?.id
+  addMessage(newMsg)
+  const isFromMe = newMsg.sender_id === user.value?.id
   scrollToBottom(true, isFromMe)
-  
-  // Mark as read if from agent/system and page is visible
-  if (['agent', 'system'].includes(newMessage.sender_role) && 
-      !newMessage.read_at && 
-      document.visibilityState === 'visible') {
-    markMessagesAsRead([newMessage.id])
-  }
-}
 
-const handleRealtimeUpdate = (updatedMessage) => {
-  // Use composable helper to update
-  updateMessage(updatedMessage)
+  if (['agent', 'system'].includes(newMsg.sender_role) &&
+      !newMsg.read_at &&
+      document.visibilityState === 'visible') {
+    markMessagesAsRead([newMsg.id])
+    clearUnreadCount()
+  }
 }
 
 const setupRealtimeSubscription = () => {
   if (realtimeChannel.value) {
     supabase.removeChannel(realtimeChannel.value)
   }
-  
+
   realtimeChannel.value = supabase
     .channel('messages-ops')
     .on(
       'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-        filter: 'thread=eq.ops'
-      },
+      { event: 'INSERT', schema: 'public', table: 'messages', filter: 'thread=eq.ops' },
       (payload) => handleRealtimeInsert(payload.new)
     )
     .on(
       'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'messages',
-        filter: 'thread=eq.ops'
-      },
-      (payload) => handleRealtimeUpdate(payload.new)
+      { event: 'UPDATE', schema: 'public', table: 'messages', filter: 'thread=eq.ops' },
+      (payload) => updateMessage(payload.new)
     )
     .subscribe()
 }
 
 const handleVisibilityChange = async () => {
-  if (document.visibilityState === 'visible') {
-    // Fetch any new messages we might have missed
-    const latestMessage = messages.value[messages.value.length - 1]
-    if (latestMessage) {
-      const { data: newMsgs } = await fetchNewMessages('ops', latestMessage.created_at)
-      newMsgs.forEach(msg => addMessage(msg))
-    }
-    
-    // Mark unread messages as read
-    const unreadAgentMessages = messages.value
-      .filter(m => ['agent', 'system'].includes(m.sender_role) && !m.read_at)
-      .map(m => m.id)
-    
-    if (unreadAgentMessages.length > 0) {
-      markMessagesAsRead(unreadAgentMessages)
-      clearUnreadCount()
-    }
+  if (document.visibilityState !== 'visible') return
+  const latestMessage = messages.value[messages.value.length - 1]
+  if (latestMessage) {
+    const { data: newMsgs } = await fetchNewMessages('ops', latestMessage.created_at)
+    newMsgs.forEach((msg) => addMessage(msg))
   }
+  markUnreadAgentMessages()
 }
 
-// Lifecycle
+const onMessagesScroll = () => {
+  if (!messagesContainer.value) return
+  const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value
+  isNearBottom.value = scrollHeight - scrollTop - clientHeight < 100
+}
+
 onMounted(async () => {
-  // Load messages
-  await fetchMessages('ops', 200)
-  scrollToBottom(false, true) // Instant scroll on initial load
-  // Re-run after layout/dock insets settle so the newest message stays in view
-  requestAnimationFrame(() => scrollToBottom(false, true))
-  
-  // Mark unread agent/system messages as read
-  const unreadAgentMessages = messages.value
-    .filter(m => ['agent', 'system'].includes(m.sender_role) && !m.read_at)
-    .map(m => m.id)
-  
-  if (unreadAgentMessages.length > 0) {
-    markMessagesAsRead(unreadAgentMessages)
-    clearUnreadCount()
-  }
-  
-  // Subscribe to realtime
+  await loadProfiles()
+  await loadMessages()
   setupRealtimeSubscription()
-  
-  // Listen for visibility changes
   document.addEventListener('visibilitychange', handleVisibilityChange)
-  
-  // Listen for auth state changes
+
   authSubscription.value = supabase.auth.onAuthStateChange((event) => {
-    if (event === 'SIGNED_IN') {
-      // Only resubscribe on sign in, not token refresh
-      setupRealtimeSubscription()
-    }
+    if (event === 'SIGNED_IN') setupRealtimeSubscription()
   })
-  
-  // Handle iOS keyboard with visualViewport API
-  if (window.visualViewport) {
-    const handleViewportResize = () => {
-      // Scroll to keep messages visible when keyboard opens/closes
-      requestAnimationFrame(() => {
-        if (isNearBottom.value) {
-          scrollToBottom(false, true)
-        }
-      })
-    }
-    window.visualViewport.addEventListener('resize', handleViewportResize)
-    window.visualViewport.addEventListener('scroll', handleViewportResize)
-    viewportHandlers.value = { handleViewportResize }
+
+  applyViewport()
+  const vv = window.visualViewport
+  vv?.addEventListener('resize', applyViewport)
+  vv?.addEventListener('scroll', applyViewport)
+  window.addEventListener('resize', applyViewport)
+  viewportCleanup = () => {
+    vv?.removeEventListener('resize', applyViewport)
+    vv?.removeEventListener('scroll', applyViewport)
+    window.removeEventListener('resize', applyViewport)
   }
 })
 
 onUnmounted(() => {
-  if (realtimeChannel.value) {
-    supabase.removeChannel(realtimeChannel.value)
-  }
-  
-  if (authSubscription.value && authSubscription.value.subscription) {
+  if (realtimeChannel.value) supabase.removeChannel(realtimeChannel.value)
+  if (authSubscription.value?.subscription) {
     authSubscription.value.subscription.unsubscribe()
   }
-  
   document.removeEventListener('visibilitychange', handleVisibilityChange)
-  
-  // Clean up visualViewport handlers
-  if (window.visualViewport && viewportHandlers.value) {
-    window.visualViewport.removeEventListener('resize', viewportHandlers.value.handleViewportResize)
-    window.visualViewport.removeEventListener('scroll', viewportHandlers.value.handleViewportResize)
-  }
+  messagesContainer.value?.removeEventListener('scroll', onMessagesScroll)
+  viewportCleanup()
 })
 </script>
 
 <style scoped>
-/* Explicit 16px on every breakpoint so iOS Safari never auto-zooms the composer. */
 textarea.chat-composer-input,
 textarea.chat-composer-input:focus,
 textarea.chat-composer-input:disabled {
