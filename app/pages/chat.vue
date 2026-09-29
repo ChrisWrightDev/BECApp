@@ -78,7 +78,8 @@
           ref="messageInput"
           v-model="newMessageBody"
           placeholder="iMessage"
-          class="flex-1 px-4 py-2 rounded-full bg-base-200 border-0 focus:outline-none focus:ring-0 resize-none overflow-hidden text-base leading-[20px]"
+          class="chat-composer-input flex-1 px-4 py-2 rounded-full bg-base-200 border-0 focus:outline-none focus:ring-0 resize-none overflow-hidden leading-[20px]"
+          style="font-size: 16px"
           :disabled="sending || !canSend"
           :maxlength="4000"
           @input="adjustTextareaHeight"
@@ -541,3 +542,12 @@ onUnmounted(() => {
   }
 })
 </script>
+
+<style scoped>
+/* Explicit 16px on every breakpoint so iOS Safari never auto-zooms the composer. */
+textarea.chat-composer-input,
+textarea.chat-composer-input:focus,
+textarea.chat-composer-input:disabled {
+  font-size: 16px !important;
+}
+</style>

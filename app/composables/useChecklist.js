@@ -110,11 +110,6 @@ export const useChecklist = () => {
     const item = checklistItems.value.find(i => i.id === itemId)
     if (!item) return { error: 'Item not found' }
 
-    // Validation: if requires_value and not done, value_text must be filled
-    if (!item.done && item.requires_value && !item.value_text) {
-      return { error: 'Please enter a value before marking as done' }
-    }
-
     // Store original state for rollback
     const originalDone = item.done
     const originalDoneAt = item.done_at
@@ -150,64 +145,6 @@ export const useChecklist = () => {
       item.done_at = originalDoneAt
       item.done_by = originalDoneBy
       console.error('Error toggling item:', err)
-      return { data: null, error: err }
-    }
-  }
-
-  // Update item value (for requires_value items like temperature)
-  const updateItemValue = async (itemId, value) => {
-    const item = checklistItems.value.find(i => i.id === itemId)
-    if (!item) return { error: 'Item not found' }
-
-    // Optimistic update
-    const originalValue = item.value_text
-    item.value_text = value
-
-    try {
-      const { data, error: updateError } = await supabase
-        .from('checklist_items')
-        .update({ value_text: value })
-        .eq('id', itemId)
-        .select()
-        .single()
-
-      if (updateError) throw updateError
-
-      Object.assign(item, data)
-      return { data, error: null }
-    } catch (err) {
-      // Rollback on error
-      item.value_text = originalValue
-      console.error('Error updating item value:', err)
-      return { data: null, error: err }
-    }
-  }
-
-  // Update item note
-  const updateItemNote = async (itemId, note) => {
-    const item = checklistItems.value.find(i => i.id === itemId)
-    if (!item) return { error: 'Item not found' }
-
-    // Optimistic update
-    const originalNote = item.note
-    item.note = note
-
-    try {
-      const { data, error: updateError } = await supabase
-        .from('checklist_items')
-        .update({ note })
-        .eq('id', itemId)
-        .select()
-        .single()
-
-      if (updateError) throw updateError
-
-      Object.assign(item, data)
-      return { data, error: null }
-    } catch (err) {
-      // Rollback on error
-      item.note = originalNote
-      console.error('Error updating item note:', err)
       return { data: null, error: err }
     }
   }
@@ -288,8 +225,6 @@ export const useChecklist = () => {
     // Methods
     fetchTodayChecklist,
     toggleItem,
-    updateItemValue,
-    updateItemNote,
     subscribeToRealtime,
     unsubscribeFromRealtime,
     formatBlockName,

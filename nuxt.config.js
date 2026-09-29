@@ -26,6 +26,10 @@ export default defineNuxtConfig({
     ignore: ['supabase/functions/**']
   },
 
+  routeRules: {
+    '/checklists': { redirect: '/checklist' }
+  },
+
   app: {
     head: {
       htmlAttrs: {

@@ -77,6 +77,14 @@ html {
   padding-top: env(safe-area-inset-top, 0px);
 }
 
+/* Unlayered + !important so daisyUI/textarea utilities cannot shrink below 16px (iOS zoom). */
+textarea.chat-composer-input,
+textarea.chat-composer-input:focus,
+textarea.chat-composer-input:hover,
+textarea.chat-composer-input:disabled {
+  font-size: 16px !important;
+}
+
 :root {
   /* Fallback until JS measures the real dock; matches icon+label tab bar + home indicator. */
   --app-vvh: 100dvh;
