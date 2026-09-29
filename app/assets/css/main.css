@@ -77,26 +77,12 @@ html {
   padding-top: env(safe-area-inset-top, 0px);
 }
 
-.chat-main {
-  display: flex;
-  flex-direction: column;
-  height: calc(100dvh - 4rem - env(safe-area-inset-top, 0px));
-  height: calc(100svh - 4rem - env(safe-area-inset-top, 0px));
-  overflow: hidden;
-  padding-bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
-}
-
-.chat-main > * {
-  flex: 1;
-  min-height: 0;
-}
-
-@media (min-width: 768px) {
-  .chat-main {
-    padding-bottom: 0;
-    height: calc(100dvh - 4rem - env(safe-area-inset-top, 0px));
-    height: calc(100svh - 4rem - env(safe-area-inset-top, 0px));
-  }
+/* Unlayered + !important so daisyUI/textarea utilities cannot shrink below 16px (iOS zoom). */
+textarea.chat-composer-input,
+textarea.chat-composer-input:focus,
+textarea.chat-composer-input:hover,
+textarea.chat-composer-input:disabled {
+  font-size: 16px !important;
 }
 
 @media (max-width: 768px) {

@@ -1,8 +1,8 @@
 <template>
   <div class="min-h-screen bg-base-100 flex flex-col">
-    <AppNavbar />
+    <AppNavbar class="flex-shrink-0" />
 
-    <main class="flex-1" :class="isChat ? 'chat-main' : 'pb-20 md:pb-0'">
+    <main class="flex-1 pb-20 md:pb-0">
       <slot />
     </main>
 
@@ -50,7 +50,6 @@
 
 <script setup>
 const route = useRoute()
-const isChat = computed(() => route.path === '/chat')
 const currentYear = new Date().getFullYear()
 const { fetchUnreadCount } = useUnreadCount()
 
@@ -58,7 +57,7 @@ onMounted(() => {
   fetchUnreadCount()
 })
 
-watch(() => route.path, (path) => {
-  if (path !== '/chat') fetchUnreadCount()
+watch(() => route.path, () => {
+  fetchUnreadCount()
 })
 </script>
