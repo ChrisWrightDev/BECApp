@@ -1,129 +1,64 @@
 <template>
-  <div class="min-h-screen bg-base-200">
-    <nav class="navbar bg-base-100 shadow-lg">
-      <div class="navbar-start">
-        <!-- Mobile menu button -->
-        <div class="dropdown lg:hidden">
-          <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
-            <Icon name="mdi:menu" class="w-6 h-6" />
-          </div>
-          <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
-            <li><NuxtLink to="/chat" @click="closeMobileMenu">Messages</NuxtLink></li>
-            <li><NuxtLink to="/checklist" @click="closeMobileMenu">Checklist</NuxtLink></li>
-            <li><NuxtLink to="/" @click="closeMobileMenu">Tasks</NuxtLink></li>
-            <li><NuxtLink to="/projects" @click="closeMobileMenu">Projects</NuxtLink></li>
-            <li><NuxtLink to="/pairs" @click="closeMobileMenu">Mated Pairs</NuxtLink></li>
-            <li v-if="isAdmin()"><NuxtLink to="/admin" @click="closeMobileMenu">Admin</NuxtLink></li>
-          </ul>
-        </div>
-        <NuxtLink to="/" class="btn btn-ghost text-lg sm:text-xl px-2 sm:px-4" active-class="" exact-active-class="">
-          <span class="hidden sm:inline">BEC Aquaculture</span>
-          <span class="sm:hidden">BEC</span>
-        </NuxtLink>
-      </div>
-      <div class="navbar-center hidden lg:flex">
-        <ul class="menu menu-horizontal px-1">
-          <li><NuxtLink to="/chat">Messages</NuxtLink></li>
-          <li><NuxtLink to="/checklist">Checklist</NuxtLink></li>
-          <li><NuxtLink to="/">Tasks</NuxtLink></li>
-          <li><NuxtLink to="/projects">Projects</NuxtLink></li>
-          <li><NuxtLink to="/pairs">Mated Pairs</NuxtLink></li>
-          <li v-if="isAdmin()"><NuxtLink to="/admin">Admin</NuxtLink></li>
-        </ul>
-      </div>
-      <div class="navbar-end">
-        <div class="dropdown dropdown-end">
-          <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
-            <ClientOnly>
-              <div class="w-10 rounded-full bg-primary text-primary-content flex items-center justify-center">
-                {{ userInitials }}
-              </div>
-              <template #fallback>
-                <div class="w-10 rounded-full bg-primary text-primary-content flex items-center justify-center">
-                  U
-                </div>
-              </template>
-            </ClientOnly>
-          </div>
-          <ul tabindex="0" class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52">
-            <li>
-              <a class="justify-between">
-                <ClientOnly>
-                  <span>{{ userName }}</span>
-                  <template #fallback>
-                    <span>User</span>
-                  </template>
-                </ClientOnly>
-                <ClientOnly>
-                  <span class="badge">{{ userRole }}</span>
-                  <template #fallback>
-                    <span class="badge">worker</span>
-                  </template>
-                </ClientOnly>
-              </a>
-            </li>
-            <li><a>Settings</a></li>
-            <li><a @click="handleSignOut">Logout</a></li>
-          </ul>
-        </div>
-      </div>
-    </nav>
+  <div class="min-h-screen bg-base-100 flex flex-col">
+    <AppNavbar />
 
-    <main class="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
+    <main class="flex-1" :class="isChat ? 'chat-main' : 'pb-20 md:pb-0'">
       <slot />
     </main>
+
+    <AppDock />
+
+    <footer class="hidden md:block bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 border-t-4 border-blue-500 relative overflow-hidden">
+      <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-400 opacity-30"></div>
+      <div class="container mx-auto px-4 py-8 relative z-10">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div>
+            <div class="flex items-center space-x-3 mb-4">
+              <img src="/images/logo.png" alt="Blue Eyed Clowns" class="h-12 w-auto" />
+              <div>
+                <h3 class="text-4xl text-white pirate-font-light">Blue Eyed Clowns</h3>
+                <p class="text-blue-200 text-sm">Clownfish hatchery</p>
+              </div>
+            </div>
+            <p class="text-blue-200 text-sm leading-relaxed">
+              Track hatches, pairs, and daily checklists for the Blue Eyed Clowns facility.
+            </p>
+          </div>
+          <div>
+            <h4 class="text-3xl text-white mb-4 pirate-font-light">Navigation</h4>
+            <ul class="space-y-2">
+              <li><NuxtLink to="/hatches" class="text-blue-200 hover:text-cyan-300 transition-colors duration-200">Hatches</NuxtLink></li>
+              <li><NuxtLink to="/pairs" class="text-blue-200 hover:text-cyan-300 transition-colors duration-200">Pairs</NuxtLink></li>
+              <li><NuxtLink to="/checklist" class="text-blue-200 hover:text-cyan-300 transition-colors duration-200">Checklists</NuxtLink></li>
+              <li><NuxtLink to="/chat" class="text-blue-200 hover:text-cyan-300 transition-colors duration-200">Chat</NuxtLink></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="text-3xl text-white mb-4 pirate-font-light">Hatchery</h4>
+            <p class="text-blue-200 text-sm italic leading-relaxed">
+              Current batches, mated pairs, and the daily floor checklist — in one place.
+            </p>
+          </div>
+        </div>
+        <div class="border-t border-blue-700 mt-8 pt-6 text-blue-300 text-sm">
+          © {{ currentYear }} Blue Eyed Clowns. All rights reserved.
+        </div>
+      </div>
+    </footer>
   </div>
 </template>
 
 <script setup>
-const { user, profile, signOut, getUserRole, isAdmin } = useAuth()
+const route = useRoute()
+const isChat = computed(() => route.path === '/chat')
+const currentYear = new Date().getFullYear()
+const { fetchUnreadCount } = useUnreadCount()
 
-const userRole = computed(() => getUserRole())
-
-// Use ClientOnly to prevent hydration mismatch since profile loads on client
-const userInitials = computed(() => {
-  // During SSR, always return placeholder
-  if (process.server) {
-    return 'U'
-  }
-  
-  if (profile.value?.firstname && profile.value?.lastname) {
-    return (profile.value.firstname.charAt(0) + profile.value.lastname.charAt(0)).toUpperCase()
-  }
-  if (profile.value?.firstname) {
-    return profile.value.firstname.charAt(0).toUpperCase()
-  }
-  if (user.value?.email) {
-    return user.value.email.charAt(0).toUpperCase()
-  }
-  return 'U'
+onMounted(() => {
+  fetchUnreadCount()
 })
 
-const userName = computed(() => {
-  // During SSR, always return placeholder
-  if (process.server) {
-    return 'User'
-  }
-  
-  if (profile.value?.firstname && profile.value?.lastname) {
-    return `${profile.value.firstname} ${profile.value.lastname}`
-  }
-  if (profile.value?.firstname) {
-    return profile.value.firstname
-  }
-  return user.value?.email || 'User'
+watch(() => route.path, (path) => {
+  if (path !== '/chat') fetchUnreadCount()
 })
-
-const handleSignOut = async () => {
-  await signOut()
-  await navigateTo('/auth/login')
-}
-
-const closeMobileMenu = () => {
-  // Close mobile menu by blurring the active element
-  if (document.activeElement) {
-    document.activeElement.blur()
-  }
-}
 </script>
-

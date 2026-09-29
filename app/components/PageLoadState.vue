@@ -4,27 +4,24 @@
       <span class="loading loading-spinner loading-lg"></span>
     </div>
 
-    <div v-else-if="error" class="card bg-base-100 shadow-xl">
-      <div class="card-body text-center py-12">
-        <div class="alert alert-error mb-4 text-left">
-          <Icon name="mdi:alert-circle" class="w-6 h-6" />
-          <span>{{ errorMessage }}</span>
-        </div>
-        <button type="button" class="btn btn-primary" @click="$emit('retry')">
-          <Icon name="mdi:refresh" class="w-5 h-5" />
-          Retry
-        </button>
-      </div>
+    <div v-else-if="error" class="alert alert-error">
+      <Icon name="mdi:alert-circle" class="w-6 h-6 shrink-0" />
+      <span>{{ errorMessage }}</span>
+      <button type="button" class="btn btn-sm" @click="$emit('retry')">
+        Retry
+      </button>
     </div>
 
-    <div v-else-if="empty" class="card bg-base-100 shadow-xl">
-      <div class="card-body text-center py-12">
-        <Icon :name="emptyIcon" class="w-16 h-16 mx-auto text-base-content/30 mb-4" />
-        <p class="text-lg text-base-content/70">{{ emptyTitle }}</p>
-        <p v-if="emptyDescription" class="text-sm text-base-content/50 mt-2">
-          {{ emptyDescription }}
-        </p>
-        <slot name="empty-action" />
+    <div v-else-if="empty" class="text-center py-12">
+      <div class="hero bg-base-200 rounded-lg">
+        <div class="hero-content text-center">
+          <div class="max-w-md">
+            <Icon :name="emptyIcon" class="w-16 h-16 mx-auto mb-4 text-base-content/50" />
+            <h2 class="text-2xl font-bold mb-2">{{ emptyTitle }}</h2>
+            <p v-if="emptyDescription" class="text-base-content/70">{{ emptyDescription }}</p>
+            <slot name="empty-action" />
+          </div>
+        </div>
       </div>
     </div>
 

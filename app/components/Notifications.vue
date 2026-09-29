@@ -1,5 +1,5 @@
 <template>
-  <div class="toast toast-top toast-end z-50">
+  <div class="toast toast-top toast-end z-50 mt-20">
     <div
       v-for="notification in notifications"
       :key="notification.id"

@@ -1,93 +1,86 @@
 <template>
-  <div class="min-h-screen bg-base-200">
-    <nav class="navbar bg-base-100 shadow-lg">
-      <div class="navbar-start">
-        <!-- Mobile menu button -->
-        <div class="dropdown lg:hidden">
-          <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
-            <Icon name="mdi:menu" class="w-6 h-6" />
+  <div class="min-h-screen bg-base-100 flex flex-col">
+    <div class="navbar bg-gradient-to-r from-red-900 to-red-700 text-white shadow-lg sticky top-0 z-50 sticky-navbar">
+      <div class="navbar-start min-w-0 sm:min-w-[250px]">
+        <div class="dropdown">
+          <div tabindex="0" role="button" class="btn btn-ghost lg:hidden text-white" ref="mobileDropdownTrigger" aria-label="Open admin menu">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16"></path>
+            </svg>
           </div>
-          <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
-            <li><NuxtLink to="/admin" @click="closeMobileMenu">Dashboard</NuxtLink></li>
-            <li><NuxtLink to="/admin/templates" @click="closeMobileMenu">Templates</NuxtLink></li>
-            <li><NuxtLink to="/admin/jobs" @click="closeMobileMenu">Jobs</NuxtLink></li>
-            <li><NuxtLink to="/admin/users" @click="closeMobileMenu">Users</NuxtLink></li>
-            <li><NuxtLink to="/admin/analytics" @click="closeMobileMenu">Analytics</NuxtLink></li>
+          <ul tabindex="0" class="menu menu-md dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-64 text-base-content">
+            <li><NuxtLink to="/admin" class="flex items-center gap-2" @click="closeMobileMenu"><Icon name="mdi:view-dashboard" class="w-4 h-4" />Dashboard</NuxtLink></li>
+            <li><NuxtLink to="/admin/users" class="flex items-center gap-2" @click="closeMobileMenu"><Icon name="mdi:account-group" class="w-4 h-4" />Users</NuxtLink></li>
+            <li><NuxtLink to="/admin/tanks" class="flex items-center gap-2" @click="closeMobileMenu"><Icon name="mdi:water" class="w-4 h-4" />Tanks</NuxtLink></li>
           </ul>
         </div>
-        <NuxtLink to="/" class="btn btn-ghost text-lg sm:text-xl px-2 sm:px-4" active-class="" exact-active-class="">
-          <span class="hidden sm:inline">BEC Admin</span>
-          <span class="sm:hidden">Admin</span>
+        <NuxtLink to="/admin" class="btn btn-ghost text-xl text-white">
+          <Icon name="mdi:cog" class="w-6 h-6 mr-2 text-red-300" />
+          Admin Dashboard
         </NuxtLink>
       </div>
+
       <div class="navbar-center hidden lg:flex">
-        <ul class="menu menu-horizontal px-1">
-          <li><NuxtLink to="/admin">Dashboard</NuxtLink></li>
-          <li><NuxtLink to="/admin/templates">Templates</NuxtLink></li>
-          <li><NuxtLink to="/admin/jobs">Jobs</NuxtLink></li>
-          <li><NuxtLink to="/admin/users">Users</NuxtLink></li>
-          <li><NuxtLink to="/admin/analytics">Analytics</NuxtLink></li>
+        <ul class="menu menu-horizontal px-0 space-x-0 menu-md">
+          <li>
+            <NuxtLink to="/admin/users" class="btn btn-ghost btn-sm flex items-center gap-1 px-2 text-white hover:bg-red-800">
+              <Icon name="mdi:account-group" class="w-4 h-4" />Users
+            </NuxtLink>
+          </li>
+          <li>
+            <NuxtLink to="/admin/tanks" class="btn btn-ghost btn-sm flex items-center gap-1 px-2 text-white hover:bg-red-800">
+              <Icon name="mdi:water" class="w-4 h-4" />Tanks
+            </NuxtLink>
+          </li>
         </ul>
       </div>
-      <div class="navbar-end">
-        <NuxtLink to="/" class="btn btn-ghost btn-sm sm:btn-md hidden sm:inline-flex">Back to App</NuxtLink>
-        <div class="dropdown dropdown-end">
-          <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
-            <ClientOnly>
-              <div class="w-10 rounded-full bg-primary text-primary-content flex items-center justify-center">
-                {{ userInitials }}
-              </div>
-              <template #fallback>
-                <div class="w-10 rounded-full bg-primary text-primary-content flex items-center justify-center">
-                  U
-                </div>
-              </template>
-            </ClientOnly>
-          </div>
-          <ul tabindex="0" class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52">
-            <li><a @click="handleSignOut">Logout</a></li>
-          </ul>
-        </div>
-      </div>
-    </nav>
 
-    <main class="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
+      <div class="navbar-end">
+        <label class="swap swap-rotate mr-2">
+          <input
+            type="checkbox"
+            :checked="isDark"
+            class="theme-controller"
+            @change="toggleTheme"
+          />
+          <Icon :name="isDark ? 'mdi:white-balance-sunny' : 'mdi:moon-waning-crescent'" class="w-5 h-5" />
+        </label>
+        <NuxtLink to="/" class="btn btn-outline btn-sm ml-2 text-white border-white hover:bg-white hover:text-red-900">
+          <Icon name="mdi:arrow-left" class="w-4 h-4 mr-1" />
+          Main Site
+        </NuxtLink>
+      </div>
+    </div>
+
+    <main class="flex-1 pb-20 md:pb-0">
       <slot />
     </main>
+
+    <AppDock />
   </div>
 </template>
 
 <script setup>
-const { user, profile, signOut } = useAuth()
-
-const userInitials = computed(() => {
-  // During SSR, always return placeholder
-  if (process.server) {
-    return 'U'
-  }
-  
-  if (profile.value?.firstname && profile.value?.lastname) {
-    return (profile.value.firstname.charAt(0) + profile.value.lastname.charAt(0)).toUpperCase()
-  }
-  if (profile.value?.firstname) {
-    return profile.value.firstname.charAt(0).toUpperCase()
-  }
-  if (user.value?.email) {
-    return user.value.email.charAt(0).toUpperCase()
-  }
-  return 'U'
-})
-
-const handleSignOut = async () => {
-  await signOut()
-  await navigateTo('/auth/login')
-}
+const { isDark, toggleTheme } = useTheme()
+const { fetchUnreadCount } = useUnreadCount()
+const mobileDropdownTrigger = ref(null)
 
 const closeMobileMenu = () => {
-  // Close mobile menu by blurring the active element
-  if (document.activeElement) {
-    document.activeElement.blur()
-  }
+  mobileDropdownTrigger.value?.blur()
+  document.querySelectorAll('.dropdown [tabindex="0"]').forEach((el) => el.blur())
 }
+
+onMounted(() => {
+  fetchUnreadCount()
+})
 </script>
 
+<style scoped>
+.navbar {
+  min-height: 4rem;
+}
+
+.btn-ghost:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+</style>

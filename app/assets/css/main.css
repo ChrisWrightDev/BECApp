@@ -1,57 +1,111 @@
+@import url('https://fonts.googleapis.com/css2?family=Bilbo+Swash+Caps&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Mobile optimizations */
+:root {
+  --color-scheme: light;
+  /* daisyUI v5 aliases so dock/CSS can use --color-primary instead of hsl(var(--p)) */
+  --color-primary: hsl(var(--p));
+  --color-primary-content: hsl(var(--pc));
+  --color-base-content: hsl(var(--bc));
+  --color-base-100: hsl(var(--b1));
+  --color-base-200: hsl(var(--b2));
+  --color-base-300: hsl(var(--b3));
+}
+
+.dark {
+  --color-scheme: dark;
+}
+
+html {
+  color-scheme: var(--color-scheme);
+}
+
+.pirate-font-light {
+  font-family: "Bilbo Swash Caps", cursive;
+  color: white;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+}
+
+.pirate-font-dark {
+  font-family: "Bilbo Swash Caps", cursive;
+  color: black;
+  text-shadow: 2px 2px 4px rgba(255, 254, 254, 0.7);
+}
+
+.form-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+}
+
+.stat-title {
+  font-size: 1.25rem;
+}
+
+.stat-desc {
+  font-size: 1rem;
+}
+
 @layer base {
-  /* Ensure touch targets are at least 44x44px */
-  /* button, a, input[type="checkbox"], input[type="radio"] {
-    min-height: 44px;
-    min-width: 44px;
-  } */
-  
-  /* Improve touch scrolling */
   * {
     -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
   }
-  
-  /* Better text rendering on mobile */
+
+  html,
+  body {
+    min-height: 100%;
+    background-color: var(--color-base-100);
+  }
+
   body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
   }
-  
-  /* Prevent text size adjustment on iOS */
-  input, select, textarea {
-    font-size: 16px; /* Prevents zoom on iOS */
-  }
-  
-  @media (min-width: 640px) {
-    input, select, textarea {
-      font-size: inherit;
-    }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px;
   }
 }
 
-/* Small button exceptions for mobile */
-@layer utilities {
-  .btn-xs {
-    min-height: 32px;
-    min-width: 32px;
-  }
-  
-  @media (min-width: 640px) {
-    .btn-xs {
-      min-height: 44px;
-      min-width: 44px;
-    }
-  }
-  
-  /* Safe area support for mobile devices */
-  .safe-area-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
+.sticky-navbar {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.chat-main {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 4rem - env(safe-area-inset-top, 0px));
+  height: calc(100svh - 4rem - env(safe-area-inset-top, 0px));
+  overflow: hidden;
+  padding-bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
+}
+
+.chat-main > * {
+  flex: 1;
+  min-height: 0;
+}
+
+@media (min-width: 768px) {
+  .chat-main {
+    padding-bottom: 0;
+    height: calc(100dvh - 4rem - env(safe-area-inset-top, 0px));
+    height: calc(100svh - 4rem - env(safe-area-inset-top, 0px));
   }
 }
 
+@media (max-width: 768px) {
+  .pirate-font-light,
+  .pirate-font-dark {
+    font-size: 1em;
+  }
+
+  .hero {
+    min-height: 40vh;
+  }
+}

@@ -4,7 +4,7 @@
       <div class="card-body">
         <!-- Logo/Branding -->
         <div class="text-center mb-6">
-          <h1 class="text-3xl font-bold text-primary mb-2">BEC Aquaculture</h1>
+          <h1 class="text-3xl font-bold text-primary mb-2">Blue Eyed Clowns</h1>
           <p class="text-base-content/70">Update your password</p>
         </div>
 

@@ -1,8 +1,8 @@
 <template>
-  <div>
-    <div class="mb-4">
-      <h1 class="text-2xl sm:text-4xl font-bold mb-1">Daily Checklist</h1>
-      <p class="text-sm sm:text-base text-base-content/70">{{ todayDate }}</p>
+  <div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+      <h1 class="text-4xl font-bold mb-4">Checklists</h1>
+      <p class="text-base-content/70">{{ todayDate }}</p>
     </div>
 
     <PageLoadState

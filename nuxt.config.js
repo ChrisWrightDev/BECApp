@@ -28,14 +28,23 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: 'BEC Aquaculture Management System',
+      htmlAttrs: {
+        'data-theme': 'light'
+      },
+      title: 'Blue Eyed Clowns',
+      script: [
+        {
+          innerHTML: `(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.setAttribute('data-theme',d?'dark':'light');document.documentElement.classList.toggle('dark',d);}catch(e){}})();`
+        }
+      ],
       meta: [
         { charset: 'utf-8' },
-        { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes' },
+        { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5, user-scalable=yes' },
         { name: 'mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
-        { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
-        { name: 'apple-mobile-web-app-title', content: 'BEC App' }
+        { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
+        { name: 'apple-mobile-web-app-title', content: 'BEC' },
+        { name: 'theme-color', content: '#0284c7' }
       ],
       link: [
         { rel: 'apple-touch-icon', sizes: '180x180', href: '/ios/180.png' },
@@ -59,8 +68,8 @@ export default defineNuxtConfig({
       name: 'Blue Eyed Clowns',
       short_name: 'BEC',
       description: 'Blue Eyed Clowns - Aquaculture Management System',
-      theme_color: '#0517b5',
-      background_color: '#0f1721',
+      theme_color: '#0284c7',
+      background_color: '#f1f5f9',
       display: 'standalone',
       orientation: 'portrait',
       scope: '/',

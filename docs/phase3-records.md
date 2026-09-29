@@ -41,7 +41,14 @@ It only sets the new columns; it does NOT modify or delete any existing tank row
 
 **Expected backfill count for live data:** 288 tanks (290 total - 2 unparseable: A1A and H11)
 
-### 2. Hatches table: frozen as legacy
+### 2. Hatches table: unused by the app
+
+The app no longer reads or writes the `hatches` table. Pair clutch counts, badges, and
+the clutches modal on `/pairs` come from `hatch_batches` filtered by `pair_id`
+(current and past batches). Pairs with no matching batches show an empty state.
+
+The table is scheduled to be dropped. If this migration is applied before that drop,
+it still freezes writes as admin-only:
 
 | Change | Before | After |
 |---|---|---|
@@ -49,9 +56,7 @@ It only sets the new columns; it does NOT modify or delete any existing tank row
 | Update policy | `hatches_authenticated_update` (any authenticated user) | `Admins can update hatches` (admin-only) |
 | Delete policy | `hatches_authenticated_delete` (any authenticated user) | `Admins can delete hatches` (admin-only) |
 | Read policy | `Allow authenticated read` (unchanged) | `Allow authenticated read` (unchanged) |
-| Table comment | None | "DEPRECATED: Legacy clutch records. Use hatch_batches for new records. Read-only for workers; admin-only writes." |
-
-Workers can still view legacy hatches, but only admins can create, update, or delete them.
+| Table comment | None | "DEPRECATED: Legacy clutch records. Use hatch_batches for new records." |
 
 ### 3. Hatch_batches: NO CHANGES
 
@@ -149,7 +154,7 @@ It parses tank names using the same logic as the migration, so it can be run BEF
 4. **Deploy the app:** Push and deploy the updated code
    - Admins see the new Tanks page under Admin → Tanks
    - Admins can set labels and bank roles for existing tanks
-   - Workers see deprecation notices on legacy hatches
+   - Workers see pair clutches from `hatch_batches` on `/pairs`
 
 ## Test plan (after applying)
 
@@ -193,15 +198,14 @@ UPDATE tanks SET label = 'F2-3' WHERE name = 'Some existing tank';
 -- Expected: system = 'F', row_no = 2, tank_no = 3
 ```
 
-### 3. Hatches table is read-only for workers
-- [ ] As a worker, try to INSERT into `hatches` via Supabase client
-  ```js
-  await supabase.from('hatches').insert({ pair_id: '...', hatch_date: '2026-09-28' })
-  // Expected: error or 0 rows inserted
-  ```
-- [ ] As an admin, the same INSERT should succeed
-- [ ] Workers can still SELECT from `hatches`
-- [ ] App shows deprecation notices on hatches UI
+### 3. Pair clutches come from hatch_batches
+- [ ] Open `/pairs` as a worker
+- [ ] A pair with `hatch_batches.pair_id` set shows clutch count, badge, and modal
+      (`batch_code`, `egg_laid_date`, `stage`, `status`, `current_count`) with a
+      link to `/hatches/<id>`
+- [ ] A pair with no matching batches shows "0 clutches" and an empty modal,
+      with no error
+- [ ] Workers can SELECT from `hatch_batches` (existing authenticated read policy)
 
 ### 4. Admin Tanks page works
 - [ ] Log in as admin
