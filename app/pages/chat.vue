@@ -12,7 +12,7 @@
     <!-- Messages container -->
     <div
       ref="messagesContainer"
-      class="flex-1 min-h-0 overflow-y-auto px-4 py-2 bg-base-200"
+      class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-2 bg-base-200"
       @scroll="handleScroll"
     >
       <div v-if="loading" class="flex justify-center py-12">
@@ -480,6 +480,8 @@ onMounted(async () => {
   // Load messages
   await fetchMessages('ops', 200)
   scrollToBottom(false, true) // Instant scroll on initial load
+  // Re-run after layout/dock insets settle so the newest message stays in view
+  requestAnimationFrame(() => scrollToBottom(false, true))
   
   // Mark unread agent/system messages as read
   const unreadAgentMessages = messages.value

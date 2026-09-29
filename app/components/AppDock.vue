@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed bottom-0 left-0 right-0 z-50 md:hidden">
+  <div data-app-dock class="fixed bottom-0 left-0 right-0 z-50 md:hidden">
     <div class="dock dock-bottom bg-base-200/95 backdrop-blur-sm border-t border-base-300">
       <div v-for="tab in tabs" :key="tab.to" class="dock-item">
         <NuxtLink

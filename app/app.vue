@@ -1,7 +1,7 @@
 <template>
   <div>
+    <NuxtPwaAssets />
     <NuxtLayout>
-      <NuxtPwaAssets />
       <NuxtPage />
     </NuxtLayout>
     <Notifications />
