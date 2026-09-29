@@ -10,7 +10,9 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
   }
 
   const supabase = useSupabaseClient()
-  const { user, getSession, sessionInitialized } = useAuth()
+  const { user, getSession, sessionInitialized, ensureSessionInitialized } = useAuth()
+
+  await ensureSessionInitialized()
 
   // Fast path: if user is already authenticated and session is initialized
   if (user.value && sessionInitialized.value) {
@@ -46,4 +48,3 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     return navigateTo('/auth/login')
   }
 })
-

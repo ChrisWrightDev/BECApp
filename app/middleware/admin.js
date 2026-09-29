@@ -5,17 +5,11 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
   }
 
   const supabase = useSupabaseClient()
-  const { user, getSession, isAdmin } = useAuth()
+  const { getSession, isAdmin, fetchProfile, ensureSessionInitialized } = useAuth()
 
-  // First check if user is already set
-  if (user.value) {
-    if (!isAdmin()) {
-      return navigateTo('/')
-    }
-    return
-  }
+  await ensureSessionInitialized()
 
-  // Check session directly from Supabase
+  // Check session directly from Supabase (getSession, not getUser)
   try {
     const { data: { session }, error } = await supabase.auth.getSession()
     
@@ -25,7 +19,11 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
 
     // Update user state via getSession (it handles readonly refs internally)
     await getSession() // This will set user state and load profile
-    
+
+    if (!isAdmin() && session.user.id) {
+      await fetchProfile(session.user.id)
+    }
+
     if (!isAdmin()) {
       return navigateTo('/')
     }
@@ -34,4 +32,3 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     return navigateTo('/auth/login')
   }
 })
-
