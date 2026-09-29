@@ -1,11 +1,11 @@
 <template>
-  <div>
-    <div class="page-header flex items-start justify-between gap-3">
+  <div class="container mx-auto px-4 py-8">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
       <div>
-        <h1>Users</h1>
-        <p>Roles and account details</p>
+        <h1 class="text-4xl font-bold mb-4">Users</h1>
+        <p class="text-base-content/70">Roles and account details</p>
       </div>
-      <button @click="loadUsers" class="btn btn-ghost btn-sm btn-circle" aria-label="Refresh">
+      <button @click="loadUsers" class="btn btn-ghost btn-circle" aria-label="Refresh">
         <Icon name="mdi:refresh" class="w-5 h-5" />
       </button>
     </div>
@@ -23,8 +23,9 @@
         <div
           v-for="user in users"
           :key="user.id"
-          class="hatch-card"
+          class="card bg-base-100 shadow-xl"
         >
+          <div class="card-body">
           <div class="flex items-start gap-3">
             <div class="avatar placeholder">
               <div class="bg-primary text-primary-content rounded-full w-10">
@@ -61,6 +62,7 @@
               <Icon name="mdi:information-outline" class="w-4 h-4" />
               Details
             </button>
+          </div>
           </div>
         </div>
       </div>

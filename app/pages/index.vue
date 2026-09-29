@@ -1,18 +1,27 @@
 <template>
-  <div>
-    <section class="home-hero" aria-label="Blue Eyed Clowns">
-      <div class="home-hero-overlay"></div>
-      <div class="home-hero-content">
-        <h1>Blue Eyed Clowns</h1>
-        <p>Clownfish hatchery</p>
+  <div class="container mx-auto">
+    <div
+      class="hero min-h-[40vh] md:min-h-[70vh] mb-8 overflow-hidden relative"
+      style="background-image: url('/images/hero-reef.png'); background-size: cover; background-position: center;"
+      aria-label="Blue Eyed Clowns"
+    >
+      <div class="hero-overlay bg-black/30"></div>
+      <div class="hero-content text-center relative z-10 w-full">
+        <div class="max-w-4xl">
+          <h1 class="pirate-font-light text-5xl sm:text-7xl font-semibold tracking-wide">Blue Eyed Clowns</h1>
+          <p class="pirate-font-light text-2xl sm:text-3xl mt-3">Clownfish hatchery</p>
+        </div>
       </div>
-    </section>
+    </div>
 
-    <section class="home-body">
-      <div class="page-header">
-        <h2 class="text-xl font-bold">Active hatches</h2>
-        <p>Current batches that are not completed, failed, or archived</p>
+    <div class="px-4 sm:px-6 lg:px-8 pb-8">
+      <div class="flex items-center gap-3 mb-4">
+        <Icon name="mdi:egg-outline" class="w-6 h-6 text-primary" />
+        <h2 class="text-2xl font-bold">Active hatches</h2>
+        <div class="badge badge-primary">{{ summaryStats.activeCount }}</div>
+        <NuxtLink to="/hatches" class="btn btn-outline btn-sm ml-auto">View All →</NuxtLink>
       </div>
+      <p class="text-base-content/70 mb-6">Current batches that are not completed, failed, or archived</p>
 
       <PageLoadState
         :loading="loading"
@@ -23,27 +32,30 @@
         empty-description="Current clutches will show up here once they are recorded"
         @retry="retry"
       >
-        <div class="grid grid-cols-2 gap-2 mb-3">
-          <div class="stat-chip">
-            <div class="label">Active hatches</div>
-            <div class="value">{{ summaryStats.activeCount }}</div>
+        <div class="stats stats-vertical sm:stats-horizontal shadow w-full mb-6">
+          <div class="stat">
+            <div class="stat-title">Active hatches</div>
+            <div class="stat-value text-primary">{{ summaryStats.activeCount }}</div>
+            <div class="stat-desc">Not completed, failed, or archived</div>
           </div>
-          <div class="stat-chip">
-            <div class="label">Est. fish / eggs</div>
-            <div class="value">{{ summaryStats.totalEstimate }}</div>
+          <div class="stat">
+            <div class="stat-title">Est. fish / eggs</div>
+            <div class="stat-value text-secondary">{{ summaryStats.totalEstimate }}</div>
+            <div class="stat-desc">Across current batches</div>
           </div>
         </div>
-        <div v-if="stageBadges.length" class="flex flex-wrap gap-1.5 mb-4">
+
+        <div v-if="stageBadges.length" class="flex flex-wrap gap-2 mb-6">
           <span
             v-for="item in stageBadges"
             :key="item.stage"
-            class="badge badge-outline badge-sm capitalize"
+            class="badge badge-outline capitalize"
           >
             {{ item.count }} {{ item.stage }}
           </span>
         </div>
 
-        <div class="space-y-3">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <HatchCard
             v-for="hatch in currentHatches"
             :key="hatch.id"
@@ -52,7 +64,7 @@
           />
         </div>
       </PageLoadState>
-    </section>
+    </div>
   </div>
 </template>
 
@@ -76,54 +88,3 @@ const stageBadges = computed(() =>
 
 onMounted(load)
 </script>
-
-<style scoped>
-.home-hero {
-  position: relative;
-  min-height: 13.5rem;
-  display: flex;
-  align-items: flex-end;
-  background-image: url('/images/hero-reef.png');
-  background-size: cover;
-  background-position: center;
-  color: #f8fafc;
-}
-
-.home-hero-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(2, 6, 23, 0.15) 0%, rgba(2, 6, 23, 0.72) 100%);
-}
-
-.home-hero-content {
-  position: relative;
-  z-index: 1;
-  padding: 1.5rem 1rem 1.25rem;
-}
-
-.home-hero h1 {
-  margin: 0;
-  font-size: 1.85rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-}
-
-.home-hero p {
-  margin: 0.3rem 0 0;
-  color: #cbd5e1;
-  font-size: 0.95rem;
-}
-
-.home-body {
-  max-width: 42rem;
-  margin: 0 auto;
-  padding: 1rem 1rem 0;
-}
-
-@media (min-width: 640px) {
-  .home-hero {
-    min-height: 18rem;
-  }
-}
-</style>

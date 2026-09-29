@@ -1,52 +1,72 @@
 <template>
-  <NuxtLink :to="`/hatches/${hatch.id}`" :id="hatch.id" class="hatch-card" :class="{ compact }">
-    <div class="flex items-start justify-between gap-2">
-      <div class="min-w-0">
-        <h3 class="font-semibold text-base leading-tight truncate">
-          {{ hatch.batch_code || 'Untitled batch' }}
-        </h3>
-        <p class="text-sm text-base-content/70 mt-0.5 truncate">
-          {{ hatch.pairName || 'Unknown pair' }}
-        </p>
+  <NuxtLink
+    :to="`/hatches/${hatch.id}`"
+    :id="hatch.id"
+    class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300 block"
+  >
+    <div class="card-body" :class="compact ? 'p-4' : ''">
+      <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
+        <div class="min-w-0">
+          <h2 class="card-title text-lg">{{ hatch.batch_code || 'Untitled batch' }}</h2>
+          <p class="text-sm text-base-content/70 mt-1">
+            {{ hatch.pairName || 'Unknown pair' }}
+          </p>
+        </div>
+        <span class="badge badge-lg capitalize shrink-0" :class="statusClass">
+          {{ hatch.status }}
+        </span>
       </div>
-      <span class="badge badge-sm shrink-0 capitalize" :class="statusClass">
-        {{ hatch.status }}
-      </span>
-    </div>
 
-    <div class="flex flex-wrap gap-1.5 mt-3">
-      <span v-if="hatch.stage" class="badge badge-outline badge-sm capitalize">
-        {{ formatFlag(hatch.stage) }}
-      </span>
-      <span v-if="hatch.parentTankLabel" class="badge badge-ghost badge-sm">
-        <Icon name="mdi:water" class="w-3 h-3 mr-1" />
-        {{ hatch.parentTankLabel }}
-      </span>
-      <span v-if="hatch.current_count != null" class="badge badge-ghost badge-sm">
-        {{ hatch.current_count }} fish
-      </span>
-      <span v-else-if="hatch.estimatedCount" class="badge badge-ghost badge-sm">
-        ~{{ hatch.estimatedCount }}
-      </span>
-    </div>
+      <p v-if="hatch.stage" class="text-base-content/80 text-sm line-clamp-2">
+        Stage: {{ formatFlag(hatch.stage) }}
+      </p>
 
-    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 text-xs text-base-content/60">
-      <span v-if="hatch.eggLaidLabel">
-        Laid {{ hatch.eggLaidLabel }}
-      </span>
-      <span v-if="hatch.daysSinceLaid != null">
-        {{ hatch.daysSinceLaid }}d ago
-      </span>
-    </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+        <div v-if="hatch.eggLaidLabel" class="flex items-start space-x-3">
+          <Icon name="mdi:calendar" class="w-5 h-5 mt-1 text-primary" />
+          <div>
+            <h3 class="font-semibold text-sm text-base-content/70">Eggs laid</h3>
+            <p class="text-base-content">{{ hatch.eggLaidLabel }}</p>
+          </div>
+        </div>
+        <div v-if="hatch.parentTankLabel || hatch.currentTankLabel" class="flex items-start space-x-3">
+          <Icon name="mdi:water" class="w-5 h-5 mt-1 text-primary" />
+          <div>
+            <h3 class="font-semibold text-sm text-base-content/70">Tank</h3>
+            <p class="text-base-content">{{ hatch.currentTankLabel || hatch.parentTankLabel }}</p>
+          </div>
+        </div>
+        <div class="flex items-start space-x-3">
+          <Icon name="mdi:fish" class="w-5 h-5 mt-1 text-primary" />
+          <div>
+            <h3 class="font-semibold text-sm text-base-content/70">Count</h3>
+            <p class="text-base-content">
+              {{ hatch.current_count != null ? hatch.current_count : (hatch.estimatedCount || 0) }}
+            </p>
+          </div>
+        </div>
+        <div v-if="hatch.daysSinceLaid != null" class="flex items-start space-x-3">
+          <Icon name="mdi:clock-outline" class="w-5 h-5 mt-1 text-primary" />
+          <div>
+            <h3 class="font-semibold text-sm text-base-content/70">Age</h3>
+            <p class="text-base-content">{{ hatch.daysSinceLaid }} days</p>
+          </div>
+        </div>
+      </div>
 
-    <div v-if="hatch.qualityFlags?.length" class="flex flex-wrap gap-1 mt-2">
-      <span
-        v-for="flag in hatch.qualityFlags"
-        :key="flag"
-        class="badge badge-warning badge-outline badge-xs"
-      >
-        {{ formatFlag(flag) }}
-      </span>
+      <div v-if="hatch.qualityFlags?.length" class="flex flex-wrap gap-1 mt-2">
+        <span
+          v-for="flag in hatch.qualityFlags"
+          :key="flag"
+          class="badge badge-warning badge-outline badge-sm"
+        >
+          {{ formatFlag(flag) }}
+        </span>
+      </div>
+
+      <div v-if="!compact" class="card-actions justify-end mt-2">
+        <span class="btn btn-outline btn-sm">Details</span>
+      </div>
     </div>
   </NuxtLink>
 </template>

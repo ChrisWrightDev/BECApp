@@ -1,14 +1,16 @@
 <template>
-  <div>
-    <div class="page-header">
-      <h1>Pairs</h1>
-      <p>Track mated pairs and clutches</p>
-      <div class="flex gap-2 mt-3">
-        <button @click="openTankModal" class="btn btn-outline btn-sm flex-1">
+  <div class="container mx-auto px-4 py-8">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
+      <div>
+        <h1 class="text-4xl font-bold mb-4">Pairs</h1>
+        <p class="text-base-content/70">Track mated pairs and clutches</p>
+      </div>
+      <div class="flex gap-2 mt-4 md:mt-0">
+        <button @click="openTankModal" class="btn btn-outline">
           <Icon name="mdi:water" class="w-4 h-4" />
           Tanks
         </button>
-        <button @click="openPairModal" class="btn btn-primary btn-sm flex-1">
+        <button @click="openPairModal" class="btn btn-primary">
           <Icon name="mdi:plus" class="w-4 h-4" />
           New Pair
         </button>
@@ -16,7 +18,7 @@
     </div>
 
     <!-- Filters -->
-    <div class="card bg-base-100 shadow-md mb-4">
+    <div class="card bg-base-100 shadow-xl mb-4">
       <div class="card-body p-4 sm:p-6">
         <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <div class="form-control w-full sm:w-auto sm:min-w-[150px]">
@@ -80,7 +82,7 @@
       <div
         v-for="pair in displayPairs"
         :key="pair.id"
-        class="card bg-base-100 shadow-md"
+        class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300"
       >
         <div class="card-body p-4 sm:p-6">
           <div class="flex justify-between items-start mb-2 gap-2">

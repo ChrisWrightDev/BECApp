@@ -29,9 +29,14 @@ export default defineNuxtConfig({
   app: {
     head: {
       htmlAttrs: {
-        'data-theme': 'bec'
+        'data-theme': 'light'
       },
       title: 'Blue Eyed Clowns',
+      script: [
+        {
+          innerHTML: `(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.setAttribute('data-theme',d?'dark':'light');document.documentElement.classList.toggle('dark',d);}catch(e){}})();`
+        }
+      ],
       meta: [
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5, user-scalable=yes' },

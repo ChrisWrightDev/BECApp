@@ -1,12 +1,12 @@
 <template>
-  <div>
-    <div class="page-header flex items-start justify-between gap-3">
+  <div class="container mx-auto px-4 py-8">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
       <div>
-        <h1>Hatches</h1>
-        <p>{{ headerCopy }}</p>
+        <h1 class="text-4xl font-bold mb-4">Hatches</h1>
+        <p class="text-base-content/70">{{ headerCopy }}</p>
       </div>
-      <label class="label cursor-pointer gap-2 py-0">
-        <span class="label-text text-xs">Completed</span>
+      <label class="label cursor-pointer gap-2 mt-4 md:mt-0 justify-start">
+        <span class="label-text">Completed</span>
         <input
           v-model="showCompleted"
           type="checkbox"
@@ -24,12 +24,21 @@
       empty-description="Hatch batches will appear here once they are recorded"
       @retry="retry"
     >
-      <div class="space-y-3">
-        <HatchCard
-          v-for="hatch in visibleHatches"
-          :key="hatch.id"
-          :hatch="hatch"
-        />
+      <div class="max-w-4xl mx-auto">
+        <ul class="timeline timeline-vertical timeline-compact timeline-snap-icon">
+          <li v-for="(hatch, index) in visibleHatches" :key="hatch.id">
+            <div class="timeline-start">
+              <div class="text-lg font-bold">{{ hatch.eggLaidLabel || 'Date TBD' }}</div>
+            </div>
+            <div class="timeline-middle">
+              <Icon name="mdi:check-circle" class="w-5 h-5 text-primary" />
+            </div>
+            <div class="timeline-end timeline-box">
+              <HatchCard :hatch="hatch" />
+            </div>
+            <hr v-if="index < visibleHatches.length - 1" />
+          </li>
+        </ul>
       </div>
     </PageLoadState>
   </div>

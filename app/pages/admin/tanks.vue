@@ -1,10 +1,12 @@
 <template>
-  <div>
-    <div class="page-header">
-      <h1>Tanks</h1>
-      <p>Labels and bank layout</p>
-      <div class="flex flex-col gap-2 mt-3">
-        <select v-model="systemFilter" class="select select-bordered select-sm w-full">
+  <div class="container mx-auto px-4 py-8">
+    <div class="flex flex-col md:flex-row md:items-start md:justify-between mb-8 gap-4">
+      <div>
+        <h1 class="text-4xl font-bold mb-4">Tanks</h1>
+        <p class="text-base-content/70">Labels and bank layout</p>
+      </div>
+      <div class="flex flex-col sm:flex-row gap-2">
+        <select v-model="systemFilter" class="select select-bordered select-sm">
           <option :value="null">All Systems</option>
           <option value="A">System A</option>
           <option value="B">System B</option>
@@ -13,13 +15,13 @@
           <option value="E">System E</option>
           <option value="F">System F</option>
         </select>
-        <select v-model="roleFilter" class="select select-bordered select-sm w-full">
+        <select v-model="roleFilter" class="select select-bordered select-sm">
           <option :value="null">All Roles</option>
           <option value="mated_pair">Mated Pair</option>
           <option value="grow_out">Grow Out</option>
           <option value="hatch">Hatch</option>
         </select>
-        <button class="btn btn-ghost btn-sm w-full" @click="clearFilters">
+        <button class="btn btn-ghost btn-sm" @click="clearFilters">
           Clear Filters
         </button>
       </div>
@@ -35,7 +37,7 @@
       @retry="retry"
     >
       <div class="space-y-6">
-        <div v-for="group in groupedTanks" :key="group.system || 'unlabeled'" class="card bg-base-100 shadow-md">
+        <div v-for="group in groupedTanks" :key="group.system || 'unlabeled'" class="card bg-base-100 shadow-xl">
           <div class="card-body p-4">
             <h2 class="card-title text-lg mb-4">
               {{ group.system ? `System ${group.system}` : 'Unlabeled Tanks' }}
