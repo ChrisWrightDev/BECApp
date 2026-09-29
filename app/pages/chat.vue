@@ -1,11 +1,7 @@
 <template>
   <div class="min-h-screen bg-base-100 max-w-[600px] mx-auto">
     <!-- Header -->
-    <div
-      ref="headerEl"
-      class="sticky top-0 z-10 bg-base-100 border-b border-base-300"
-      :style="{ paddingTop: 'env(safe-area-inset-top, 0px)' }"
-    >
+    <div class="sticky top-0 z-10 bg-base-100 border-b border-base-300">
       <div class="flex items-center justify-between p-4">
         <div class="flex items-center space-x-3 min-w-0">
           <NuxtLink to="/" class="btn btn-ghost btn-sm">
@@ -50,11 +46,7 @@
     </div>
 
     <!-- Messages Container -->
-    <div
-      v-else
-      class="flex flex-col h-[calc(100vh-140px)]"
-      :style="threadPaneStyle"
-    >
+    <div v-else class="flex flex-col h-[calc(100vh-140px)]">
       <!-- Messages List -->
       <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-4 overscroll-contain">
         <div v-if="allMessages.length === 0" class="flex items-center justify-center h-full">
@@ -132,11 +124,7 @@
       </div>
 
       <!-- Message Input -->
-      <div
-        v-if="canSend"
-        class="border-t border-base-300 px-4 pt-4 bg-base-100"
-        :style="{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }"
-      >
+      <div v-if="canSend" class="border-t border-base-300 p-4 bg-base-100">
         <form class="flex space-x-2" @submit.prevent="handleSendMessage">
           <div class="flex-1">
             <textarea
@@ -200,7 +188,6 @@ const { clearUnreadCount } = useUnreadCount()
 const supabase = useSupabaseClient()
 const { showError } = useNotifications()
 
-const headerEl = ref(null)
 const messagesContainer = ref(null)
 const messageInput = ref(null)
 const newMessage = ref('')
@@ -210,9 +197,7 @@ const profilesById = ref({})
 const realtimeChannel = ref(null)
 const authSubscription = ref(null)
 const isNearBottom = ref(true)
-const threadPaneStyle = ref({})
 let nextTempId = 1
-let viewportCleanup = () => {}
 
 const userEmail = computed(() => user.value?.email?.toLowerCase() || '')
 const senderRole = computed(() => getSenderRole(userEmail.value))
@@ -355,24 +340,10 @@ const loadMessages = async () => {
     return
   }
   await nextTick()
-  applyViewport()
   messagesContainer.value?.removeEventListener('scroll', onMessagesScroll)
   messagesContainer.value?.addEventListener('scroll', onMessagesScroll)
-  scrollToBottom(false, true)
-  requestAnimationFrame(() => scrollToBottom(false, true))
+  scrollToBottom(false)
   markUnreadAgentMessages()
-}
-
-const applyViewport = () => {
-  if (typeof window === 'undefined') return
-  const vv = window.visualViewport
-  const viewportH = Math.round(vv?.height || window.innerHeight)
-  const headerH = headerEl.value?.offsetHeight || 72
-  const height = Math.max(160, viewportH - headerH)
-  threadPaneStyle.value = { height: `${height}px` }
-  if (isNearBottom.value) {
-    requestAnimationFrame(() => scrollToBottom(false, true))
-  }
 }
 
 const scrollToBottom = (smooth = true, force = false) => {
@@ -503,17 +474,6 @@ onMounted(async () => {
   authSubscription.value = supabase.auth.onAuthStateChange((event) => {
     if (event === 'SIGNED_IN') setupRealtimeSubscription()
   })
-
-  applyViewport()
-  const vv = window.visualViewport
-  vv?.addEventListener('resize', applyViewport)
-  vv?.addEventListener('scroll', applyViewport)
-  window.addEventListener('resize', applyViewport)
-  viewportCleanup = () => {
-    vv?.removeEventListener('resize', applyViewport)
-    vv?.removeEventListener('scroll', applyViewport)
-    window.removeEventListener('resize', applyViewport)
-  }
 })
 
 onUnmounted(() => {
@@ -523,7 +483,6 @@ onUnmounted(() => {
   }
   document.removeEventListener('visibilitychange', handleVisibilityChange)
   messagesContainer.value?.removeEventListener('scroll', onMessagesScroll)
-  viewportCleanup()
 })
 </script>
 
