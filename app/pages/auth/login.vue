@@ -171,20 +171,18 @@ const handleLogin = async () => {
     }
 
     if (data?.user) {
-      // Record login time for payroll
-      try {
-        await recordLogin()
-      } catch (sessionError) {
+      // Record login time for payroll — do not block navigation
+      recordLogin().catch((sessionError) => {
         console.warn('Failed to record login session:', sessionError)
-      }
-      
+      })
+
       // Validate redirect to prevent open redirect vulnerability
       let redirectTo = '/'
       const redirectParam = route.query.redirect?.toString()
       if (redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')) {
         redirectTo = redirectParam
       }
-      
+
       await router.push(redirectTo)
     }
   } catch (err) {

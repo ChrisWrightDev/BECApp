@@ -1,8 +1,13 @@
-export default defineNuxtRouteMiddleware((to, from) => {
-  const { user } = useAuth()
+export default defineNuxtRouteMiddleware(async (to, from) => {
+  if (process.server) {
+    return
+  }
+
+  const { user, ensureSessionInitialized } = useAuth()
+
+  await ensureSessionInitialized()
 
   if (user.value) {
     return navigateTo('/')
   }
 })
-
