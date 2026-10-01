@@ -12,6 +12,7 @@
             <li><NuxtLink to="/admin" class="flex items-center gap-2" @click="closeMobileMenu"><Icon name="mdi:view-dashboard" class="w-4 h-4" />Dashboard</NuxtLink></li>
             <li><NuxtLink to="/admin/users" class="flex items-center gap-2" @click="closeMobileMenu"><Icon name="mdi:account-group" class="w-4 h-4" />Users</NuxtLink></li>
             <li><NuxtLink to="/admin/tanks" class="flex items-center gap-2" @click="closeMobileMenu"><Icon name="mdi:water" class="w-4 h-4" />Tanks</NuxtLink></li>
+            <li><NuxtLink to="/admin/prices" class="flex items-center gap-2" @click="closeMobileMenu"><Icon name="mdi:currency-usd" class="w-4 h-4" />Prices</NuxtLink></li>
           </ul>
         </div>
         <NuxtLink to="/admin" class="btn btn-ghost text-xl text-white">
@@ -30,6 +31,11 @@
           <li>
             <NuxtLink to="/admin/tanks" class="btn btn-ghost btn-sm flex items-center gap-1 px-2 text-white hover:bg-red-800">
               <Icon name="mdi:water" class="w-4 h-4" />Tanks
+            </NuxtLink>
+          </li>
+          <li>
+            <NuxtLink to="/admin/prices" class="btn btn-ghost btn-sm flex items-center gap-1 px-2 text-white hover:bg-red-800">
+              <Icon name="mdi:currency-usd" class="w-4 h-4" />Prices
             </NuxtLink>
           </li>
         </ul>
