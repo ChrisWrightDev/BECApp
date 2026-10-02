@@ -17,8 +17,8 @@
             <li><NuxtLink to="/admin/pairs-shop" class="flex items-center gap-2" @click="closeMobileMenu"><Icon name="mdi:storefront" class="w-4 h-4" />Bonded Pairs (Shop)</NuxtLink></li>
           </ul>
         </div>
-        <NuxtLink to="/admin" class="btn btn-ghost text-xl text-white min-w-0 px-1">
-          <span class="truncate">Admin Dashboard</span>
+        <NuxtLink to="/admin" class="btn btn-ghost text-lg sm:text-xl text-white min-w-0 px-1">
+          <span class="whitespace-nowrap">Admin Dashboard</span>
         </NuxtLink>
       </div>
 
@@ -53,7 +53,7 @@
       </div>
 
       <div class="navbar-end">
-        <label class="swap swap-rotate mr-2">
+        <label class="swap swap-rotate mr-1 shrink-0">
           <input
             type="checkbox"
             :checked="isDark"
@@ -91,6 +91,17 @@ const closeMobileMenu = () => {
 <style scoped>
 .navbar {
   min-height: 4rem;
+  flex-wrap: nowrap;
+}
+
+.navbar-start {
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.navbar-end {
+  flex: 0 0 auto;
+  margin-left: 0.25rem;
 }
 
 .btn-ghost:hover {
