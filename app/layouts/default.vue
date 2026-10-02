@@ -52,9 +52,16 @@
 const route = useRoute()
 const currentYear = new Date().getFullYear()
 const { fetchUnreadCount } = useUnreadCount()
+const { fetchReminders, subscribeToRealtime, unsubscribeFromRealtime } = useReminders()
 
 onMounted(() => {
   fetchUnreadCount()
+  fetchReminders()
+  subscribeToRealtime()
+})
+
+onUnmounted(() => {
+  unsubscribeFromRealtime()
 })
 
 watch(() => route.path, () => {

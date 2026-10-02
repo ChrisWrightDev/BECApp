@@ -28,12 +28,59 @@ const remindersError = (err) => {
 const chicagoToday = () =>
   new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' })
 
+export const attentionBadgeText = (count) => {
+  const n = Number(count) || 0
+  if (n <= 0) return ''
+  return n > 9 ? '9+' : String(n)
+}
+
+// Null assigned_to is "All staff" — same label as staffName().
+export const isAttentionReminder = (item, userId) => {
+  if (!item || item.completed_at) return false
+  if (item.assigned_to == null) return true
+  return Boolean(userId) && item.assigned_to === userId
+}
+
+// One realtime channel shared by the dock, homepage, reminders page, and chat.
+const reminderSync = {
+  holders: 0,
+  channel: null,
+  client: null,
+  reminders: null,
+  refresh: null,
+  detach: null,
+  localWrites: 0,
+  fetchSeq: 0
+}
+
+const applyReminderPayload = (payload) => {
+  const target = reminderSync.reminders
+  if (!target || !payload) return
+
+  if (payload.eventType === 'INSERT') {
+    if (!target.value.some((row) => row.id === payload.new.id)) {
+      target.value = [...target.value, payload.new]
+    }
+  } else if (payload.eventType === 'UPDATE') {
+    const index = target.value.findIndex((row) => row.id === payload.new.id)
+    if (index !== -1) {
+      target.value[index] = payload.new
+    } else {
+      target.value = [...target.value, payload.new]
+    }
+  } else if (payload.eventType === 'DELETE') {
+    target.value = target.value.filter((row) => row.id !== payload.old.id)
+  }
+}
+
 export const useReminders = () => {
   const supabase = useSupabaseClient()
   const { user } = useAuth()
 
   const reminders = useState('importantReminders', () => [])
   const staff = useState('reminderStaff', () => [])
+  const remindersStatus = useState('importantRemindersStatus', () => 'idle')
+  const remindersLoadError = useState('importantRemindersError', () => null)
 
   const openReminders = computed(() => {
     return [...reminders.value]
@@ -54,6 +101,18 @@ export const useReminders = () => {
       .sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime())
   })
 
+  const attentionReminders = computed(() => {
+    const userId = user.value?.id
+    return openReminders.value.filter((item) => isAttentionReminder(item, userId))
+  })
+
+  const attentionCount = computed(() => attentionReminders.value.length)
+
+  const attentionBadgeLabel = computed(() => {
+    if (remindersStatus.value !== 'ready') return ''
+    return attentionBadgeText(attentionCount.value)
+  })
+
   const reminderMessageIds = computed(() => {
     const ids = new Set()
     reminders.value.forEach((item) => {
@@ -67,6 +126,11 @@ export const useReminders = () => {
     return item.due_date < chicagoToday()
   }
 
+  const isDueToday = (item) => {
+    if (!item?.due_date || item.completed_at) return false
+    return item.due_date === chicagoToday()
+  }
+
   const staffName = (profileId) => {
     if (!profileId) return 'All staff'
     const row = staff.value.find((person) => person.id === profileId)
@@ -75,7 +139,18 @@ export const useReminders = () => {
     return name || 'Staff'
   }
 
-  const fetchReminders = async () => {
+  const fetchReminders = async ({ background = false } = {}) => {
+    if (background && (reminderSync.localWrites > 0 || remindersStatus.value === 'loading')) {
+      return { data: reminders.value, error: null }
+    }
+
+    const seq = ++reminderSync.fetchSeq
+    const showLoading = !background && remindersStatus.value !== 'ready'
+    if (showLoading) {
+      remindersStatus.value = 'loading'
+      remindersLoadError.value = null
+    }
+
     try {
       const { data, error } = await withTimeout(
         supabase
@@ -84,11 +159,21 @@ export const useReminders = () => {
           .order('created_at', { ascending: true })
       )
 
+      if (seq !== reminderSync.fetchSeq) return { data: reminders.value, error: null }
       if (error) throw error
       reminders.value = data || []
+      remindersStatus.value = 'ready'
+      remindersLoadError.value = null
       return { data: reminders.value, error: null }
     } catch (err) {
+      if (seq !== reminderSync.fetchSeq) return { data: null, error: err }
       const next = remindersError(err)
+      if (background && remindersStatus.value === 'ready') {
+        console.warn('Reminder refresh unavailable:', next?.message || next)
+        return { data: reminders.value, error: next }
+      }
+      remindersStatus.value = 'error'
+      remindersLoadError.value = next
       console.error('Error fetching reminders:', next)
       return { data: null, error: next }
     }
@@ -115,6 +200,7 @@ export const useReminders = () => {
     const trimmedTitle = (title || '').trim()
     if (!trimmedTitle) return { data: null, error: new Error('Title is required') }
 
+    reminderSync.localWrites += 1
     try {
       const payload = {
         title: trimmedTitle,
@@ -138,6 +224,8 @@ export const useReminders = () => {
       const next = remindersError(err)
       console.error('Error creating reminder:', next)
       return { data: null, error: next }
+    } finally {
+      reminderSync.localWrites = Math.max(0, reminderSync.localWrites - 1)
     }
   }
 
@@ -153,6 +241,7 @@ export const useReminders = () => {
     item.completed_at = completing ? new Date().toISOString() : null
     item.completed_by = completing ? user.value?.id || null : null
 
+    reminderSync.localWrites += 1
     try {
       const { data, error } = await supabase
         .from('important_reminders')
@@ -173,46 +262,77 @@ export const useReminders = () => {
       const next = remindersError(err)
       console.error('Error toggling reminder:', next)
       return { data: null, error: next }
+    } finally {
+      reminderSync.localWrites = Math.max(0, reminderSync.localWrites - 1)
     }
   }
 
   const subscribeToRealtime = () => {
-    return supabase
+    reminderSync.reminders = reminders
+    reminderSync.client = supabase
+    reminderSync.refresh = () => fetchReminders({ background: true })
+
+    if (!import.meta.client) return reminderSync.channel
+
+    reminderSync.holders += 1
+    if (reminderSync.channel) return reminderSync.channel
+
+    reminderSync.channel = supabase
       .channel('important_reminders')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'important_reminders' },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            if (!reminders.value.some((row) => row.id === payload.new.id)) {
-              reminders.value = [...reminders.value, payload.new]
-            }
-          } else if (payload.eventType === 'UPDATE') {
-            const index = reminders.value.findIndex((row) => row.id === payload.new.id)
-            if (index !== -1) {
-              reminders.value[index] = payload.new
-            } else {
-              reminders.value = [...reminders.value, payload.new]
-            }
-          } else if (payload.eventType === 'DELETE') {
-            reminders.value = reminders.value.filter((row) => row.id !== payload.old.id)
-          }
-        }
+        applyReminderPayload
       )
       .subscribe()
+
+    let refreshTimer = null
+    const scheduleRefresh = () => {
+      clearTimeout(refreshTimer)
+      refreshTimer = setTimeout(() => {
+        reminderSync.refresh?.()
+      }, 200)
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') scheduleRefresh()
+    }
+    window.addEventListener('focus', scheduleRefresh)
+    document.addEventListener('visibilitychange', onVisibility)
+    reminderSync.detach = () => {
+      clearTimeout(refreshTimer)
+      window.removeEventListener('focus', scheduleRefresh)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+
+    return reminderSync.channel
   }
 
-  const unsubscribeFromRealtime = (channel) => {
-    if (channel) supabase.removeChannel(channel)
+  const unsubscribeFromRealtime = () => {
+    if (!import.meta.client) return
+    reminderSync.holders = Math.max(0, reminderSync.holders - 1)
+    if (reminderSync.holders > 0) return
+
+    if (reminderSync.channel && reminderSync.client) {
+      reminderSync.client.removeChannel(reminderSync.channel)
+    }
+    reminderSync.channel = null
+    reminderSync.detach?.()
+    reminderSync.detach = null
   }
 
   return {
     reminders,
     staff,
+    remindersStatus,
+    remindersError: remindersLoadError,
     openReminders,
     completedReminders,
+    attentionReminders,
+    attentionCount,
+    attentionBadgeLabel,
     reminderMessageIds,
     isOverdue,
+    isDueToday,
     staffName,
     fetchReminders,
     fetchStaff,
