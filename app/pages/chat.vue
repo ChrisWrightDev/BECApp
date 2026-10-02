@@ -76,7 +76,7 @@
             class="flex message-item"
             :class="isOwnMessage(message) ? 'justify-end' : 'justify-start'"
           >
-            <div class="flex max-w-[70%]" :class="isOwnMessage(message) ? 'flex-row-reverse' : 'flex-row'">
+            <div class="flex max-w-[92%]" :class="isOwnMessage(message) ? 'flex-row-reverse' : 'flex-row'">
               <!-- Avatar -->
               <div
                 v-if="!isOwnMessage(message) && (messageIndex === 0 || senderKey(group.messages[messageIndex - 1]) !== senderKey(message))"
