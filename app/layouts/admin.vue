@@ -17,9 +17,8 @@
             <li><NuxtLink to="/admin/pairs-shop" class="flex items-center gap-2" @click="closeMobileMenu"><Icon name="mdi:storefront" class="w-4 h-4" />Bonded Pairs (Shop)</NuxtLink></li>
           </ul>
         </div>
-        <NuxtLink to="/admin" class="btn btn-ghost text-xl text-white">
-          <Icon name="mdi:cog" class="w-6 h-6 mr-2 text-red-300" />
-          Admin Dashboard
+        <NuxtLink to="/admin" class="btn btn-ghost text-lg sm:text-xl text-white min-w-0 px-1">
+          <span class="whitespace-nowrap">Admin Dashboard</span>
         </NuxtLink>
       </div>
 
@@ -54,7 +53,7 @@
       </div>
 
       <div class="navbar-end">
-        <label class="swap swap-rotate mr-2">
+        <label class="swap swap-rotate mr-1 shrink-0">
           <input
             type="checkbox"
             :checked="isDark"
@@ -63,8 +62,8 @@
           />
           <Icon :name="isDark ? 'mdi:white-balance-sunny' : 'mdi:moon-waning-crescent'" class="w-5 h-5" />
         </label>
-        <NuxtLink to="/" class="btn btn-outline btn-sm ml-2 text-white border-white hover:bg-white hover:text-red-900">
-          <Icon name="mdi:arrow-left" class="w-4 h-4 mr-1" />
+        <NuxtLink to="/" class="btn btn-outline btn-xs ml-1 px-2 min-h-0 h-7 text-xs shrink-0 text-white border-white hover:bg-white hover:text-red-900">
+          <Icon name="mdi:arrow-left" class="w-3 h-3" />
           Main Site
         </NuxtLink>
       </div>
@@ -74,13 +73,12 @@
       <slot />
     </main>
 
-    <AppDock />
+    <AdminDock />
   </div>
 </template>
 
 <script setup>
 const { isDark, toggleTheme } = useTheme()
-const { fetchUnreadCount } = useUnreadCount()
 const mobileDropdownTrigger = ref(null)
 
 const closeMobileMenu = () => {
@@ -88,14 +86,22 @@ const closeMobileMenu = () => {
   document.querySelectorAll('.dropdown [tabindex="0"]').forEach((el) => el.blur())
 }
 
-onMounted(() => {
-  fetchUnreadCount()
-})
 </script>
 
 <style scoped>
 .navbar {
   min-height: 4rem;
+  flex-wrap: nowrap;
+}
+
+.navbar-start {
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.navbar-end {
+  flex: 0 0 auto;
+  margin-left: 0.25rem;
 }
 
 .btn-ghost:hover {
