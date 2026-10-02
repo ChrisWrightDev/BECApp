@@ -1,7 +1,7 @@
 <template>
   <div class="container mx-auto">
     <div
-      class="hero min-h-[40vh] md:min-h-[70vh] mb-8 overflow-hidden relative"
+      class="hero min-h-[40vh] md:min-h-[70vh] mb-4 overflow-hidden relative"
       style="background-image: url('/images/hero-reef.png'); background-size: cover; background-position: center;"
       aria-label="Blue Eyed Clowns"
     >
@@ -15,6 +15,8 @@
     </div>
 
     <div class="px-4 sm:px-6 lg:px-8 pb-8">
+      <ReminderAttentionCard />
+
       <div class="flex items-center gap-3 mb-4">
         <Icon name="mdi:egg-outline" class="w-6 h-6 text-primary" />
         <h2 class="text-2xl font-bold">Active hatches</h2>
