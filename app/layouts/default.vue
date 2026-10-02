@@ -28,7 +28,7 @@
             <h4 class="text-3xl text-white mb-4 pirate-font-light">Navigation</h4>
             <ul class="space-y-2">
               <li><NuxtLink to="/hatches" class="text-blue-200 hover:text-cyan-300 transition-colors duration-200">Hatches</NuxtLink></li>
-              <li><NuxtLink to="/pairs" class="text-blue-200 hover:text-cyan-300 transition-colors duration-200">Pairs</NuxtLink></li>
+              <li><NuxtLink to="/reminders" class="text-blue-200 hover:text-cyan-300 transition-colors duration-200">Reminders</NuxtLink></li>
               <li><NuxtLink to="/checklist" class="text-blue-200 hover:text-cyan-300 transition-colors duration-200">Checklists</NuxtLink></li>
               <li><NuxtLink to="/chat" class="text-blue-200 hover:text-cyan-300 transition-colors duration-200">Chat</NuxtLink></li>
             </ul>
