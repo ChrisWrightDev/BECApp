@@ -2,7 +2,7 @@
   <div class="container mx-auto px-4 py-8">
     <div class="mb-8">
       <h1 class="text-4xl font-bold mb-4">Admin</h1>
-      <p class="text-base-content/70">Users, tanks, and prices</p>
+      <p class="text-base-content/70">Users, tanks, prices, and shop pairs</p>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -33,6 +33,16 @@
             Prices
           </h2>
           <p class="text-base-content/70">Edit clownfish catalog prices</p>
+        </div>
+      </NuxtLink>
+
+      <NuxtLink to="/admin/pairs-shop" class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300">
+        <div class="card-body">
+          <h2 class="card-title">
+            <Icon name="mdi:storefront" class="w-6 h-6 text-primary" />
+            Bonded Pairs (Shop)
+          </h2>
+          <p class="text-base-content/70">Manage shop pairs and videos</p>
         </div>
       </NuxtLink>
     </div>
