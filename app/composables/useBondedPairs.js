@@ -268,8 +268,17 @@ export const useBondedPairs = () => {
         xhr.setRequestHeader('Authorization', `Bearer ${session.access_token}`)
         xhr.setRequestHeader('apikey', config.public.supabaseAnonKey)
         xhr.setRequestHeader('x-upsert', 'false')
-        xhr.setRequestHeader('cache-control', '3600')
-        if (contentType) xhr.setRequestHeader('Content-Type', contentType)
+
+        const formData = new FormData()
+        formData.append('cacheControl', '3600')
+        if (typeof Blob !== 'undefined' && body instanceof Blob) {
+          const fileName = body instanceof File && body.name
+            ? body.name
+            : contentType === 'image/jpeg' ? 'poster.jpg' : 'video'
+          formData.append('', body, fileName)
+        } else {
+          formData.append('', body)
+        }
 
         xhr.upload.onprogress = (event) => {
           if (event.lengthComputable && typeof onProgress === 'function') {
@@ -298,7 +307,7 @@ export const useBondedPairs = () => {
 
         xhr.onerror = () => reject(new Error('Upload failed. Check your connection and try again.'))
         xhr.onabort = () => reject(new Error('Upload cancelled'))
-        xhr.send(body)
+        xhr.send(formData)
       }
 
       run().catch(reject)
