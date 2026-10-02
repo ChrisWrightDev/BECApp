@@ -3,7 +3,12 @@
     <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
       <div>
         <h1 class="text-4xl font-bold mb-4">Prices</h1>
-        <p class="text-base-content/70">Clownfish catalog dollar amounts</p>
+        <p class="text-base-content/70">
+          Single clownfish catalog prices.
+          <NuxtLink to="/admin/pairs-shop" class="link link-hover text-primary">
+            Manage bonded pairs
+          </NuxtLink>
+        </p>
       </div>
       <button
         type="button"
@@ -41,12 +46,7 @@
                   <div class="min-w-0">
                     <h3 class="font-semibold break-words">{{ row.name }}</h3>
                     <div class="flex flex-wrap gap-1 mt-2">
-                      <span
-                        class="badge badge-sm"
-                        :class="isPair(row) ? 'badge-secondary' : 'badge-ghost'"
-                      >
-                        {{ isPair(row) ? 'Pair' : 'Single' }}
-                      </span>
+                      <span class="badge badge-sm badge-ghost">Single</span>
                       <span
                         class="badge badge-sm"
                         :class="row.in_stock ? 'badge-success' : 'badge-ghost'"
@@ -152,8 +152,8 @@ const parsePriceCents = (raw) => {
   return { ok: true, cents }
 }
 
-const isPair = (row) =>
-  row.pattern === 'Bonded Pairs Available' || (row.name || '').includes('Bonded Pair')
+const isBondedPair = (item) =>
+  item.pattern === 'Bonded Pairs Available' || (item.name || '').includes('Bonded Pair')
 
 const isValid = (row) => parsePriceCents(row.dollars).ok
 
@@ -213,7 +213,7 @@ const { loading, error, load: loadPrices, retry } = usePageLoad(async () => {
     .order('name', { ascending: true })
 
   if (fetchError) throw fetchError
-  rows.value = (data || []).map(mapRow)
+  rows.value = (data || []).filter((item) => !isBondedPair(item)).map(mapRow)
 })
 
 const onPriceInput = (row) => {
