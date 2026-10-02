@@ -31,8 +31,8 @@ const tabs = [
   { to: '/', label: 'Home', icon: 'mdi:home', exact: true },
   { to: '/checklist', label: 'Checklists', icon: 'mdi:checkbox-marked-outline' },
   { to: '/chat', label: 'Chat', icon: 'mdi:message-outline', badge: true },
-  { to: '/hatches', label: 'Hatches', icon: 'mdi:egg-outline' },
-  { to: '/pairs', label: 'Pairs', icon: 'mdi:fish' }
+  { to: '/reminders', label: 'Reminders', icon: 'mdi:bell-alert-outline' },
+  { to: '/hatches', label: 'Hatches', icon: 'mdi:egg-outline' }
 ]
 
 const isActive = (tab) => {

@@ -76,7 +76,7 @@
             class="flex message-item"
             :class="isOwnMessage(message) ? 'justify-end' : 'justify-start'"
           >
-            <div class="flex max-w-[70%]" :class="isOwnMessage(message) ? 'flex-row-reverse' : 'flex-row'">
+            <div class="flex max-w-[92%]" :class="isOwnMessage(message) ? 'flex-row-reverse' : 'flex-row'">
               <!-- Avatar -->
               <div
                 v-if="!isOwnMessage(message) && (messageIndex === 0 || senderKey(group.messages[messageIndex - 1]) !== senderKey(message))"
@@ -100,7 +100,7 @@
 
                 <!-- Message Content -->
                 <div
-                  class="px-4 py-2 rounded-2xl max-w-full break-words"
+                  class="px-4 py-2 rounded-2xl max-w-full break-words select-none"
                   :class="[
                     isOwnMessage(message)
                       ? 'bg-primary text-primary-content rounded-br-md'
@@ -108,14 +108,45 @@
                     message.sendFailed ? 'opacity-60 cursor-pointer' : ''
                   ]"
                   @click="message.sendFailed ? retryMessage(message) : null"
+                  @contextmenu.prevent="openReminderSheet(message)"
+                  @touchstart.passive="startReminderPress(message)"
+                  @touchend="cancelReminderPress"
+                  @touchmove="cancelReminderPress"
+                  @mousedown="startReminderPress(message)"
+                  @mouseup="cancelReminderPress"
+                  @mouseleave="cancelReminderPress"
                 >
                   <div class="whitespace-pre-wrap">{{ message.body }}</div>
                   <div v-if="message.sendFailed" class="text-xs mt-1 opacity-80">Tap to retry</div>
                 </div>
 
                 <!-- Timestamp -->
-                <div class="text-xs text-base-content/50 mt-1" :class="isOwnMessage(message) ? 'mr-1' : 'ml-1'">
-                  {{ formatTime(message.created_at) }}
+                <div class="text-xs text-base-content/50 mt-1 flex items-center gap-1" :class="isOwnMessage(message) ? 'mr-1 flex-row-reverse' : 'ml-1'">
+                  <span>{{ formatTime(message.created_at) }}</span>
+                  <span
+                    v-if="hasReminder(message)"
+                    class="inline-flex items-center text-warning"
+                    title="Saved as an important reminder"
+                  >
+                    <Icon name="mdi:bell-alert-outline" class="w-3.5 h-3.5" />
+                  </span>
+                  <details
+                    v-if="canCreateReminderFrom(message)"
+                    class="dropdown dropdown-top"
+                    :class="isOwnMessage(message) ? 'dropdown-end' : ''"
+                    @click.stop
+                  >
+                    <summary class="btn btn-ghost btn-xs btn-circle min-h-0 h-5 w-5" aria-label="Message actions">
+                      <Icon name="mdi:dots-horizontal" class="w-4 h-4" />
+                    </summary>
+                    <ul class="dropdown-content menu bg-base-100 text-base-content rounded-box z-20 w-56 p-2 shadow">
+                      <li>
+                        <button type="button" @click="openReminderSheet(message)">
+                          Add to Important Reminders
+                        </button>
+                      </li>
+                    </ul>
+                  </details>
                 </div>
               </div>
             </div>
@@ -153,6 +184,47 @@
         </form>
       </div>
     </div>
+
+    <dialog ref="reminderSheet" class="modal modal-bottom sm:modal-middle">
+      <div class="modal-box">
+        <h3 class="font-bold text-lg mb-1">Add to Important Reminders</h3>
+        <p class="text-sm text-base-content/70 mb-4">Saves a one-off task linked to this chat message</p>
+        <form class="space-y-4" @submit.prevent="saveReminderFromChat">
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text">Title *</span>
+            </label>
+            <textarea
+              v-model="reminderForm.title"
+              required
+              rows="3"
+              maxlength="4000"
+              class="textarea textarea-bordered w-full reminder-field"
+            />
+          </div>
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text">Due date</span>
+            </label>
+            <input
+              v-model="reminderForm.due_date"
+              type="date"
+              class="input input-bordered w-full reminder-field"
+            />
+          </div>
+          <div class="modal-action">
+            <button type="button" class="btn btn-ghost" @click="closeReminderSheet">Cancel</button>
+            <button type="submit" class="btn btn-primary" :disabled="savingReminder || !reminderForm.title.trim()">
+              <span v-if="savingReminder" class="loading loading-spinner loading-sm"></span>
+              Save reminder
+            </button>
+          </div>
+        </form>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button type="submit" @click="closeReminderSheet">close</button>
+      </form>
+    </dialog>
   </div>
 </template>
 
@@ -186,10 +258,24 @@ const {
 } = useMessages()
 const { clearUnreadCount } = useUnreadCount()
 const supabase = useSupabaseClient()
-const { showError } = useNotifications()
+const { showError, showSuccess } = useNotifications()
+const {
+  reminderMessageIds,
+  fetchReminders,
+  createReminder,
+  subscribeToRealtime,
+  unsubscribeFromRealtime
+} = useReminders()
+const route = useRoute()
 
 const messagesContainer = ref(null)
 const messageInput = ref(null)
+const reminderSheet = ref(null)
+const reminderSource = ref(null)
+const reminderForm = ref({ title: '', due_date: '' })
+const savingReminder = ref(false)
+let reminderPressTimer = null
+let remindersChannel = null
 const newMessage = ref('')
 const isLoading = ref(true)
 const loadError = ref('')
@@ -298,6 +384,71 @@ const formatTime = (dateString) => {
     hour12: true,
     timeZone: 'America/Chicago'
   })
+}
+
+const canCreateReminderFrom = (message) => {
+  return Boolean(message?.id && !message.tempId && !message.sendFailed)
+}
+
+const hasReminder = (message) => {
+  return Boolean(message?.id && reminderMessageIds.value.has(message.id))
+}
+
+const openReminderSheet = (message) => {
+  if (!canCreateReminderFrom(message)) return
+  cancelReminderPress()
+  if (import.meta.client) {
+    document.querySelectorAll('details.dropdown[open]').forEach((el) => {
+      el.removeAttribute('open')
+    })
+  }
+  reminderSource.value = message
+  reminderForm.value = {
+    title: (message.body || '').trim(),
+    due_date: ''
+  }
+  reminderSheet.value?.showModal()
+}
+
+const closeReminderSheet = () => {
+  reminderSheet.value?.close()
+}
+
+const startReminderPress = (message) => {
+  if (!canCreateReminderFrom(message)) return
+  cancelReminderPress()
+  reminderPressTimer = window.setTimeout(() => openReminderSheet(message), 500)
+}
+
+const cancelReminderPress = () => {
+  if (reminderPressTimer) {
+    window.clearTimeout(reminderPressTimer)
+    reminderPressTimer = null
+  }
+}
+
+const saveReminderFromChat = async () => {
+  if (savingReminder.value || !reminderForm.value.title.trim() || !reminderSource.value?.id) return
+  savingReminder.value = true
+  const { error } = await createReminder({
+    title: reminderForm.value.title,
+    due_date: reminderForm.value.due_date || null,
+    source_message_id: reminderSource.value.id
+  })
+  savingReminder.value = false
+  if (error) {
+    showError(error.message || 'Failed to save reminder')
+    return
+  }
+  closeReminderSheet()
+  showSuccess('Added to Important Reminders')
+}
+
+const scrollToMessage = (messageId) => {
+  if (!messageId || !messagesContainer.value) return
+  const el = messagesContainer.value.querySelector(`[data-message-id="${messageId}"]`)
+  if (!el) return
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
 
 const loadProfiles = async () => {
@@ -474,22 +625,37 @@ onMounted(async () => {
   authSubscription.value = supabase.auth.onAuthStateChange((event) => {
     if (event === 'SIGNED_IN') setupRealtimeSubscription()
   })
+
+  const { error: reminderError } = await fetchReminders()
+  if (!reminderError) {
+    remindersChannel = subscribeToRealtime()
+  }
+
+  if (route.query.message) {
+    await nextTick()
+    scrollToMessage(String(route.query.message))
+  }
 })
 
 onUnmounted(() => {
   if (realtimeChannel.value) supabase.removeChannel(realtimeChannel.value)
+  if (remindersChannel) unsubscribeFromRealtime(remindersChannel)
   if (authSubscription.value?.subscription) {
     authSubscription.value.subscription.unsubscribe()
   }
   document.removeEventListener('visibilitychange', handleVisibilityChange)
   messagesContainer.value?.removeEventListener('scroll', onMessagesScroll)
+  cancelReminderPress()
 })
 </script>
 
 <style scoped>
 textarea.chat-composer-input,
 textarea.chat-composer-input:focus,
-textarea.chat-composer-input:disabled {
+textarea.chat-composer-input:disabled,
+.reminder-field,
+.reminder-field:focus,
+.reminder-field:disabled {
   font-size: 16px !important;
 }
 </style>

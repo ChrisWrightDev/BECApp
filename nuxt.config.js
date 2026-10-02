@@ -27,7 +27,9 @@ export default defineNuxtConfig({
   },
 
   routeRules: {
-    '/checklists': { redirect: '/checklist' }
+    '/checklists': { redirect: '/checklist' },
+    '/pairs': { redirect: '/admin/pairs' },
+    '/pairs/**': { redirect: '/admin/pairs/**' }
   },
 
   app: {
