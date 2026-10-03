@@ -2,7 +2,6 @@ import { withTimeout } from '~/utils/loadState'
 
 export const useMessages = () => {
   const supabase = useSupabaseClient()
-  const { user } = useAuth()
   const { showError } = useNotifications()
 
   const messages = useState('messages', () => [])
@@ -122,12 +121,18 @@ export const useMessages = () => {
    * @param {string} tempId - Temporary ID of optimistic message
    */
   const markOptimisticFailed = (tempId) => {
-    const msg = optimisticMessages.value.find(m => m.tempId === tempId)
-    if (msg) {
-      msg.sendFailed = true
-      // Trigger reactivity
-      optimisticMessages.value = [...optimisticMessages.value]
-    }
+    patchOptimistic(tempId, { sendFailed: true, uploading: false })
+  }
+
+  /**
+   * Merge fields into an optimistic message
+   * @param {string} tempId - Temporary ID of optimistic message
+   * @param {Object} patch - Fields to merge
+   */
+  const patchOptimistic = (tempId, patch) => {
+    optimisticMessages.value = optimisticMessages.value.map((message) => (
+      message.tempId === tempId ? { ...message, ...patch } : message
+    ))
   }
 
   /**
@@ -140,9 +145,10 @@ export const useMessages = () => {
 
   /**
    * Send a new message
-   * @param {Object} messageData - Message data { thread, sender_role, sender_id, body, reply_to? }
+   * @param {Object} messageData - Message data { thread, sender_role, sender_id, body, attachments?, reply_to? }
+   * @param {{ silent?: boolean }} [options]
    */
-  const sendMessage = async (messageData) => {
+  const sendMessage = async (messageData, options = {}) => {
     sending.value = true
     try {
       const { data, error } = await supabase
@@ -156,7 +162,7 @@ export const useMessages = () => {
       return { data, error: null }
     } catch (error) {
       console.error('Error sending message:', error)
-      showError('Failed to send message')
+      if (!options.silent) showError('Failed to send message')
       return { data: null, error }
     } finally {
       sending.value = false
@@ -244,6 +250,7 @@ export const useMessages = () => {
     addOptimisticMessage,
     replaceOptimistic,
     markOptimisticFailed,
+    patchOptimistic,
     removeOptimistic,
     sendMessage,
     markMessagesAsRead,
