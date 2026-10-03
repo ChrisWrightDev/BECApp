@@ -19,7 +19,8 @@
           </ul>
         </div>
         <NuxtLink to="/admin" class="btn btn-ghost text-lg sm:text-xl text-white min-w-0 px-1">
-          <span class="whitespace-nowrap">Admin Dashboard</span>
+          <span class="sm:hidden">Admin</span>
+          <span class="hidden sm:inline whitespace-nowrap">Admin Dashboard</span>
         </NuxtLink>
       </div>
 
