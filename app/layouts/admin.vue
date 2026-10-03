@@ -10,6 +10,7 @@
           </div>
           <ul tabindex="0" class="menu menu-md dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-64 text-base-content">
             <li><NuxtLink to="/admin" class="flex items-center gap-2" @click="closeMobileMenu"><Icon name="mdi:view-dashboard" class="w-4 h-4" />Dashboard</NuxtLink></li>
+            <li><NuxtLink to="/admin/orders" class="flex items-center gap-2" @click="closeMobileMenu"><Icon name="mdi:receipt-text-outline" class="w-4 h-4" />Orders</NuxtLink></li>
             <li><NuxtLink to="/admin/users" class="flex items-center gap-2" @click="closeMobileMenu"><Icon name="mdi:account-group" class="w-4 h-4" />Users</NuxtLink></li>
             <li><NuxtLink to="/admin/tanks" class="flex items-center gap-2" @click="closeMobileMenu"><Icon name="mdi:water" class="w-4 h-4" />Tanks</NuxtLink></li>
             <li><NuxtLink to="/admin/prices" class="flex items-center gap-2" @click="closeMobileMenu"><Icon name="mdi:currency-usd" class="w-4 h-4" />Prices</NuxtLink></li>
@@ -18,12 +19,18 @@
           </ul>
         </div>
         <NuxtLink to="/admin" class="btn btn-ghost text-lg sm:text-xl text-white min-w-0 px-1">
-          <span class="whitespace-nowrap">Admin Dashboard</span>
+          <span class="sm:hidden">Admin</span>
+          <span class="hidden sm:inline whitespace-nowrap">Admin Dashboard</span>
         </NuxtLink>
       </div>
 
       <div class="navbar-center hidden lg:flex">
         <ul class="menu menu-horizontal px-0 space-x-0 menu-md">
+          <li>
+            <NuxtLink to="/admin/orders" class="btn btn-ghost btn-sm flex items-center gap-1 px-2 text-white hover:bg-red-800">
+              <Icon name="mdi:receipt-text-outline" class="w-4 h-4" />Orders
+            </NuxtLink>
+          </li>
           <li>
             <NuxtLink to="/admin/users" class="btn btn-ghost btn-sm flex items-center gap-1 px-2 text-white hover:bg-red-800">
               <Icon name="mdi:account-group" class="w-4 h-4" />Users

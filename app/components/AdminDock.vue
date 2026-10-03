@@ -32,6 +32,12 @@
         <h3 class="font-bold text-lg mb-2">More</h3>
         <ul class="menu bg-base-100 w-full p-0">
           <li>
+            <NuxtLink to="/admin/orders" class="flex items-center gap-2 text-base" @click="closeMore">
+              <Icon name="mdi:receipt-text-outline" class="w-5 h-5" />
+              Orders
+            </NuxtLink>
+          </li>
+          <li>
             <NuxtLink to="/admin/users" class="flex items-center gap-2 text-base" @click="closeMore">
               <Icon name="mdi:account-group" class="w-5 h-5" />
               Users
@@ -80,6 +86,7 @@ const isActive = (tab) => {
 
 const moreActive = computed(() =>
   moreOpen.value ||
+  route.path.startsWith('/admin/orders') ||
   route.path.startsWith('/admin/users') ||
   route.path.startsWith('/admin/tanks')
 )
