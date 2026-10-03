@@ -46,9 +46,9 @@
     </div>
 
     <!-- Messages Container -->
-    <div v-else class="flex flex-col h-[calc(100vh-140px)]">
+    <div v-else class="flex flex-col h-[calc(100vh-140px)] min-h-0">
       <!-- Messages List -->
-      <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-4 overscroll-contain">
+      <div ref="messagesContainer" class="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 overscroll-contain">
         <div v-if="allMessages.length === 0" class="flex items-center justify-center h-full">
           <div class="text-center text-base-content/70">
             <svg class="w-16 h-16 mx-auto mb-4 text-base-content/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -76,7 +76,13 @@
             class="flex message-item"
             :class="isOwnMessage(message) ? 'justify-end' : 'justify-start'"
           >
-            <div class="flex max-w-[92%]" :class="isOwnMessage(message) ? 'flex-row-reverse' : 'flex-row'">
+            <div
+              class="flex max-w-[92%]"
+              :class="[
+                isOwnMessage(message) ? 'flex-row-reverse' : 'flex-row',
+                imageAttachments(message).length ? 'w-full' : ''
+              ]"
+            >
               <!-- Avatar -->
               <div
                 v-if="!isOwnMessage(message) && (messageIndex === 0 || senderKey(group.messages[messageIndex - 1]) !== senderKey(message))"
@@ -89,7 +95,13 @@
               <div v-else-if="!isOwnMessage(message)" class="w-8 mr-2"></div>
 
               <!-- Message Bubble -->
-              <div class="flex flex-col" :class="isOwnMessage(message) ? 'items-end' : 'items-start'">
+              <div
+                class="flex min-w-0 max-w-full flex-col"
+                :class="[
+                  isOwnMessage(message) ? 'items-end' : 'items-start',
+                  imageAttachments(message).length ? 'flex-1' : ''
+                ]"
+              >
                 <!-- Sender Name (only for first message in group) -->
                 <div
                   v-if="!isOwnMessage(message) && (messageIndex === 0 || senderKey(group.messages[messageIndex - 1]) !== senderKey(message))"
@@ -102,12 +114,13 @@
                 <div
                   class="px-4 py-2 rounded-2xl max-w-full break-words select-none"
                   :class="[
+                    imageAttachments(message).length ? 'w-full' : '',
                     isOwnMessage(message)
                       ? 'bg-primary text-primary-content rounded-br-md'
                       : 'bg-base-200 text-base-content rounded-bl-md',
                     message.sendFailed ? 'opacity-60 cursor-pointer' : ''
                   ]"
-                  @click="message.sendFailed ? retryMessage(message) : null"
+                  @click="onBubbleClick(message)"
                   @contextmenu.prevent="openReminderSheet(message)"
                   @touchstart.passive="startReminderPress(message)"
                   @touchend="cancelReminderPress"
@@ -116,8 +129,66 @@
                   @mouseup="cancelReminderPress"
                   @mouseleave="cancelReminderPress"
                 >
-                  <div class="whitespace-pre-wrap">{{ message.body }}</div>
-                  <div v-if="message.sendFailed" class="text-xs mt-1 opacity-80">Tap to retry</div>
+                  <button
+                    v-if="message.reply_to"
+                    type="button"
+                    class="mb-1 flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-xs"
+                    :class="isOwnMessage(message) ? 'bg-black/15' : 'bg-base-300'"
+                    @click.stop="scrollToMessage(message.reply_to)"
+                  >
+                    <img
+                      v-if="replyThumb(replyParent(message))"
+                      :src="replyThumb(replyParent(message))"
+                      alt=""
+                      class="h-8 w-8 shrink-0 rounded object-cover"
+                    >
+                    <span class="min-w-0 truncate">{{ replyPreviewLabel(replyParent(message)) }}</span>
+                  </button>
+
+                  <div
+                    v-if="imageAttachments(message).length"
+                    class="-mx-2 flex flex-col gap-1"
+                    :class="message.body ? 'mb-1' : ''"
+                  >
+                    <button
+                      v-for="(attachment, attachmentIndex) in imageAttachments(message)"
+                      :key="attachment.path || attachment.previewUrl || attachmentIndex"
+                      type="button"
+                      class="relative block w-full overflow-hidden rounded-xl bg-black/10"
+                      :style="attachmentAspectStyle(attachment)"
+                      @click.stop="onPhotoClick(message, attachmentIndex)"
+                    >
+                      <img
+                        v-if="attachmentSrc(attachment)"
+                        :src="attachmentSrc(attachment)"
+                        alt="Photo"
+                        class="block h-full w-full object-cover"
+                        :width="attachment.width || undefined"
+                        :height="attachment.height || undefined"
+                        @error="onPhotoError(attachment)"
+                      >
+                      <span
+                        v-else
+                        class="absolute inset-0 flex items-center justify-center px-2 text-center text-xs"
+                      >
+                        {{ photoFailed(attachment.path) ? 'Photo unavailable' : 'Loading photo…' }}
+                      </span>
+                      <span
+                        v-if="message.uploading && attachmentIndex === 0"
+                        class="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/45 px-2 text-xs text-white"
+                      >
+                        <span>Sending {{ message.uploadProgress || 0 }}%</span>
+                        <progress
+                          class="progress progress-primary h-1 w-full"
+                          :value="message.uploadProgress || 0"
+                          max="100"
+                        />
+                      </span>
+                    </button>
+                  </div>
+
+                  <div v-if="message.body" class="whitespace-pre-wrap">{{ message.body }}</div>
+                  <div v-if="message.sendFailed" class="text-xs mt-1 opacity-80">Couldn't send. Tap to retry.</div>
                 </div>
 
                 <!-- Timestamp -->
@@ -141,6 +212,9 @@
                     </summary>
                     <ul class="dropdown-content menu bg-base-100 text-base-content rounded-box z-20 w-56 p-2 shadow">
                       <li>
+                        <button type="button" @click="startReply(message)">Reply</button>
+                      </li>
+                      <li>
                         <button type="button" @click="openReminderSheet(message)">
                           Add to Important Reminders
                         </button>
@@ -155,9 +229,71 @@
       </div>
 
       <!-- Message Input -->
-      <div v-if="canSend" class="border-t border-base-300 p-4 bg-base-100">
-        <form class="flex space-x-2" @submit.prevent="handleSendMessage">
-          <div class="flex-1">
+      <div v-if="canSend" class="shrink-0 border-t border-base-300 p-4 bg-base-100">
+        <div
+          v-if="replyingTo"
+          class="mb-2 flex items-center gap-2 rounded-lg bg-base-200 px-2 py-1 text-sm"
+        >
+          <img
+            v-if="replyThumb(replyingTo)"
+            :src="replyThumb(replyingTo)"
+            alt=""
+            class="h-8 w-8 shrink-0 rounded object-cover"
+          >
+          <span class="min-w-0 flex-1 truncate">{{ replyPreviewLabel(replyingTo) }}</span>
+          <button
+            type="button"
+            class="btn btn-ghost btn-xs btn-circle"
+            aria-label="Cancel reply"
+            @click="replyingTo = null"
+          >
+            <Icon name="mdi:close" class="w-4 h-4" />
+          </button>
+        </div>
+
+        <div v-if="pendingPhotos.length" class="mb-2 flex h-16 gap-2 overflow-x-auto">
+          <div
+            v-for="photo in pendingPhotos"
+            :key="photo.id"
+            class="relative h-16 w-16 shrink-0"
+          >
+            <img
+              :src="photo.previewUrl"
+              alt=""
+              class="h-16 w-16 rounded-lg object-cover"
+            >
+            <button
+              type="button"
+              class="btn btn-circle btn-xs absolute right-0.5 top-0.5 min-h-0 h-5 w-5 border-0 bg-base-100"
+              aria-label="Remove photo"
+              :disabled="outgoing"
+              @click="removePendingPhoto(photo.id)"
+            >
+              <Icon name="mdi:close" class="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+
+        <form class="flex items-end gap-2" @submit.prevent>
+          <button
+            type="button"
+            class="btn btn-ghost btn-square shrink-0"
+            aria-label="Add photos"
+            :disabled="preparingPhotos || outgoing || pendingPhotos.length >= MAX_CHAT_PHOTOS"
+            @click="openPhotoPicker"
+          >
+            <span v-if="preparingPhotos" class="loading loading-spinner loading-sm"></span>
+            <Icon v-else name="mdi:camera-outline" class="w-6 h-6" />
+          </button>
+          <input
+            ref="fileInput"
+            type="file"
+            accept="image/*"
+            multiple
+            class="hidden"
+            @change="onPhotosSelected"
+          >
+          <div class="min-w-0 flex-1">
             <textarea
               ref="messageInput"
               v-model="newMessage"
@@ -167,16 +303,17 @@
               rows="1"
               maxlength="4000"
               enterkeyhint="enter"
-              :disabled="sending"
+              :disabled="sending || outgoing"
               @input="adjustTextareaHeight"
             ></textarea>
           </div>
           <button
-            type="submit"
-            class="btn btn-primary"
+            type="button"
+            class="btn btn-primary shrink-0"
             :disabled="!canSendCurrentMessage"
+            @click="handleSendMessage"
           >
-            <span v-if="sending" class="loading loading-spinner loading-sm"></span>
+            <span v-if="sending || outgoing" class="loading loading-spinner loading-sm"></span>
             <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
             </svg>
@@ -184,6 +321,52 @@
         </form>
       </div>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="viewer"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black"
+        @click.self="closeViewer"
+        @touchstart.passive="onViewerTouchStart"
+        @touchend="onViewerTouchEnd"
+      >
+        <button
+          type="button"
+          class="btn btn-circle btn-ghost absolute right-[max(0.75rem,env(safe-area-inset-right))] top-[max(0.75rem,env(safe-area-inset-top))] z-10 text-white"
+          aria-label="Close photo"
+          @click="closeViewer"
+        >
+          <Icon name="mdi:close" class="w-6 h-6" />
+        </button>
+        <button
+          v-if="viewer.attachments.length > 1"
+          type="button"
+          class="btn btn-circle btn-ghost absolute left-2 top-1/2 z-10 -translate-y-1/2 text-white"
+          aria-label="Previous photo"
+          @click="stepViewer(-1)"
+        >
+          <Icon name="mdi:chevron-left" class="w-8 h-8" />
+        </button>
+        <img
+          v-if="viewerSrc"
+          :src="viewerSrc"
+          alt="Photo"
+          class="chat-photo-viewer-img max-h-full max-w-full object-contain"
+        >
+        <div v-else class="px-6 text-center text-sm text-white/80">
+          {{ viewerLoading ? 'Loading photo…' : 'Photo unavailable' }}
+        </div>
+        <button
+          v-if="viewer.attachments.length > 1"
+          type="button"
+          class="btn btn-circle btn-ghost absolute right-2 top-1/2 z-10 -translate-y-1/2 text-white"
+          aria-label="Next photo"
+          @click="stepViewer(1)"
+        >
+          <Icon name="mdi:chevron-right" class="w-8 h-8" />
+        </button>
+      </div>
+    </Teleport>
 
     <dialog ref="reminderSheet" class="modal modal-bottom sm:modal-middle">
       <div class="modal-box">
@@ -230,6 +413,17 @@
 
 <script setup>
 import { getSenderRole, getSenderDisplayName, canSendMessages } from '~/utils/chatConfig'
+import {
+  MAX_CHAT_PHOTOS,
+  imageAttachments,
+  messagePreviewText,
+  replyPreviewLabel,
+  attachmentAspectStyle,
+  compressChatImage,
+  buildChatPhotoPath,
+  toStoredImageAttachment,
+  isProbablyImageFile
+} from '~/utils/chatPhotos'
 
 definePageMeta({
   middleware: 'auth',
@@ -251,11 +445,20 @@ const {
   updateMessage,
   addOptimisticMessage,
   replaceOptimistic,
-  markOptimisticFailed,
+  patchOptimistic,
   removeOptimistic,
   sendMessage,
   markMessagesAsRead
 } = useMessages()
+const {
+  photoUrl,
+  photoFailed,
+  forgetPhotoUrl,
+  ensurePhotoUrl,
+  primePhotoUrls,
+  uploadChatPhoto,
+  markPhotoFailed
+} = useChatPhotos()
 const { clearUnreadCount } = useUnreadCount()
 const supabase = useSupabaseClient()
 const { showError, showSuccess } = useNotifications()
@@ -277,6 +480,17 @@ const savingReminder = ref(false)
 let reminderPressTimer = null
 let remindersChannel = null
 const newMessage = ref('')
+const pendingPhotos = ref([])
+const preparingPhotos = ref(false)
+const outgoing = ref(false)
+const replyingTo = ref(null)
+const fileInput = ref(null)
+const viewer = ref(null)
+const viewerLoading = ref(false)
+const deliveries = new Map()
+const retriedPhotoPaths = new Set()
+let longPressFired = false
+let viewerTouchStartX = 0
 const isLoading = ref(true)
 const loadError = ref('')
 const profilesById = ref({})
@@ -323,11 +537,31 @@ const messageGroups = computed(() => {
   return groups
 })
 
+const messagesById = computed(() => {
+  const map = {}
+  for (const message of allMessages.value) {
+    if (message.id) map[message.id] = message
+  }
+  return map
+})
+
 const canSendCurrentMessage = computed(() => {
+  const withinLimit = newMessage.value.length <= 4000
+  const hasText = newMessage.value.trim().length > 0
+  const hasPhotos = pendingPhotos.value.length > 0
   return canSend.value &&
     !sending.value &&
-    newMessage.value.trim().length > 0 &&
-    newMessage.value.length <= 4000
+    !outgoing.value &&
+    !preparingPhotos.value &&
+    withinLimit &&
+    (hasText || hasPhotos)
+})
+
+const viewerSrc = computed(() => {
+  const current = viewer.value
+  if (!current) return ''
+  const attachment = current.attachments[current.index]
+  return attachmentSrc(attachment)
 })
 
 const senderKey = (message) => {
@@ -404,7 +638,7 @@ const openReminderSheet = (message) => {
   }
   reminderSource.value = message
   reminderForm.value = {
-    title: (message.body || '').trim(),
+    title: messagePreviewText(message),
     due_date: ''
   }
   reminderSheet.value?.showModal()
@@ -417,7 +651,11 @@ const closeReminderSheet = () => {
 const startReminderPress = (message) => {
   if (!canCreateReminderFrom(message)) return
   cancelReminderPress()
-  reminderPressTimer = window.setTimeout(() => openReminderSheet(message), 500)
+  longPressFired = false
+  reminderPressTimer = window.setTimeout(() => {
+    longPressFired = true
+    openReminderSheet(message)
+  }, 500)
 }
 
 const cancelReminderPress = () => {
@@ -490,6 +728,7 @@ const loadMessages = async () => {
     loadError.value = error.message || 'Failed to load messages'
     return
   }
+  await primePhotoUrls(messages.value)
   await nextTick()
   messagesContainer.value?.removeEventListener('scroll', onMessagesScroll)
   messagesContainer.value?.addEventListener('scroll', onMessagesScroll)
@@ -515,60 +754,334 @@ const adjustTextareaHeight = () => {
   textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`
 }
 
+const closeOpenMenus = () => {
+  if (!import.meta.client) return
+  document.querySelectorAll('details.dropdown[open]').forEach((el) => {
+    el.removeAttribute('open')
+  })
+}
+
+const replyParent = (message) => {
+  if (!message?.reply_to) return null
+  return messagesById.value[message.reply_to] || null
+}
+
+const replyThumb = (message) => {
+  const attachment = imageAttachments(message)[0]
+  if (!attachment) return ''
+  return attachment.previewUrl || photoUrl(attachment.path)
+}
+
+const attachmentSrc = (attachment) => {
+  if (!attachment) return ''
+  if (attachment.previewUrl) return attachment.previewUrl
+  return photoUrl(attachment.path)
+}
+
+const optimisticAttachments = (photos, stored = []) => {
+  return photos.map((photo, index) => {
+    const uploaded = stored[index]
+    if (uploaded) {
+      return { ...uploaded, previewUrl: photo.previewUrl }
+    }
+    return {
+      type: 'image',
+      previewUrl: photo.previewUrl,
+      width: photo.width,
+      height: photo.height,
+      size: photo.size,
+      mime: 'image/jpeg'
+    }
+  })
+}
+
+const releaseDelivery = (tempId) => {
+  const payload = deliveries.get(tempId)
+  if (!payload) return
+  payload.photos.forEach((photo) => {
+    if (photo.previewUrl) URL.revokeObjectURL(photo.previewUrl)
+  })
+  deliveries.delete(tempId)
+}
+
+const openPhotoPicker = () => {
+  if (preparingPhotos.value || outgoing.value) return
+  if (pendingPhotos.value.length >= MAX_CHAT_PHOTOS) return
+  fileInput.value?.click()
+}
+
+const removePendingPhoto = (id) => {
+  const photo = pendingPhotos.value.find((item) => item.id === id)
+  if (photo?.previewUrl) URL.revokeObjectURL(photo.previewUrl)
+  pendingPhotos.value = pendingPhotos.value.filter((item) => item.id !== id)
+}
+
+const onPhotosSelected = async (event) => {
+  const input = event.target
+  const selected = Array.from(input.files || [])
+  input.value = ''
+  if (!selected.length) return
+
+  const room = MAX_CHAT_PHOTOS - pendingPhotos.value.length
+  if (room <= 0) {
+    showError('You can attach up to 4 photos.')
+    return
+  }
+  if (selected.length > room) {
+    showError('You can attach up to 4 photos.')
+  }
+
+  preparingPhotos.value = true
+  try {
+    for (const file of selected.slice(0, room)) {
+      if (!isProbablyImageFile(file)) {
+        showError('Choose a photo.')
+        continue
+      }
+      try {
+        const compressed = await compressChatImage(file)
+        pendingPhotos.value = [
+          ...pendingPhotos.value,
+          {
+            id: crypto.randomUUID(),
+            previewUrl: URL.createObjectURL(compressed.blob),
+            blob: compressed.blob,
+            width: compressed.width,
+            height: compressed.height,
+            size: compressed.size
+          }
+        ]
+      } catch (error) {
+        showError(error?.message || 'Couldn\'t open that photo.')
+      }
+    }
+  } finally {
+    preparingPhotos.value = false
+    if (isNearBottom.value) scrollToBottom(false, true)
+  }
+}
+
+const startReply = (message) => {
+  if (!message?.id || message.tempId || message.sendFailed) return
+  cancelReminderPress()
+  closeOpenMenus()
+  replyingTo.value = message
+  const attachment = imageAttachments(message)[0]
+  if (attachment?.path && !attachment.previewUrl && !photoUrl(attachment.path)) {
+    ensurePhotoUrl(attachment.path)
+  }
+  nextTick(() => messageInput.value?.focus())
+}
+
+const onBubbleClick = (message) => {
+  if (longPressFired) return
+  if (message.sendFailed) retryMessage(message)
+}
+
+const onPhotoClick = (message, index) => {
+  if (longPressFired) return
+  openViewer(message, index)
+}
+
+const onPhotoError = (attachment) => {
+  if (!attachment?.path || attachment.previewUrl) return
+  if (retriedPhotoPaths.has(attachment.path)) {
+    forgetPhotoUrl(attachment.path)
+    markPhotoFailed(attachment.path)
+    return
+  }
+  retriedPhotoPaths.add(attachment.path)
+  forgetPhotoUrl(attachment.path)
+  ensurePhotoUrl(attachment.path)
+}
+
+const openViewer = async (message, index) => {
+  const attachments = imageAttachments(message)
+  if (!attachments.length) return
+  viewer.value = { attachments, index }
+  const attachment = attachments[index]
+  if (attachment?.path && !attachment.previewUrl && !photoUrl(attachment.path)) {
+    viewerLoading.value = true
+    await ensurePhotoUrl(attachment.path)
+    viewerLoading.value = false
+  }
+}
+
+const closeViewer = () => {
+  viewer.value = null
+  viewerLoading.value = false
+}
+
+const stepViewer = async (delta) => {
+  const current = viewer.value
+  if (!current || current.attachments.length < 2) return
+  const count = current.attachments.length
+  const index = (current.index + delta + count) % count
+  viewer.value = { ...current, index }
+  const attachment = current.attachments[index]
+  if (attachment?.path && !attachment.previewUrl && !photoUrl(attachment.path)) {
+    viewerLoading.value = true
+    await ensurePhotoUrl(attachment.path)
+    viewerLoading.value = false
+  }
+}
+
+const onViewerTouchStart = (event) => {
+  viewerTouchStartX = event.changedTouches?.[0]?.clientX || 0
+}
+
+const onViewerTouchEnd = (event) => {
+  const endX = event.changedTouches?.[0]?.clientX || 0
+  const delta = endX - viewerTouchStartX
+  if (Math.abs(delta) < 40) return
+  stepViewer(delta > 0 ? -1 : 1)
+}
+
+const onViewerKeydown = (event) => {
+  if (!viewer.value) return
+  if (event.key === 'Escape') closeViewer()
+  if (event.key === 'ArrowRight') stepViewer(1)
+  if (event.key === 'ArrowLeft') stepViewer(-1)
+}
+
+const uploadPayloadPhotos = async (tempId, payload) => {
+  const stored = payload.uploaded.slice()
+  const total = payload.photos.length || 1
+  for (let index = stored.length; index < payload.photos.length; index += 1) {
+    const photo = payload.photos[index]
+    const path = buildChatPhotoPath('ops')
+    await uploadChatPhoto({
+      path,
+      blob: photo.blob,
+      onProgress: (percent) => {
+        const overall = Math.round(((index + (percent / 100)) / total) * 100)
+        patchOptimistic(tempId, { uploadProgress: overall })
+      }
+    })
+    stored.push(toStoredImageAttachment({
+      path,
+      width: photo.width,
+      height: photo.height,
+      size: photo.size
+    }))
+    payload.uploaded = stored.slice()
+    patchOptimistic(tempId, {
+      uploadProgress: Math.round(((index + 1) / total) * 100),
+      attachments: optimisticAttachments(payload.photos, stored)
+    })
+  }
+  return stored
+}
+
+const deliverMessage = async (tempId) => {
+  const payload = deliveries.get(tempId)
+  if (!payload || outgoing.value) return
+  outgoing.value = true
+  patchOptimistic(tempId, {
+    sendFailed: false,
+    uploading: payload.photos.length > 0,
+    uploadProgress: payload.uploaded.length && payload.photos.length
+      ? Math.round((payload.uploaded.length / payload.photos.length) * 100)
+      : 0
+  })
+
+  try {
+    const stored = await uploadPayloadPhotos(tempId, payload)
+    patchOptimistic(tempId, { uploading: false, uploadProgress: 100 })
+
+    const messageData = {
+      thread: 'ops',
+      sender_role: senderRole.value,
+      sender_id: user.value.id,
+      body: payload.body,
+      attachments: stored
+    }
+    if (payload.replyTo) messageData.reply_to = payload.replyTo
+
+    const { data, error } = await sendMessage(messageData, { silent: true })
+    if (error || !data) {
+      throw error || new Error('Failed to send message')
+    }
+
+    await primePhotoUrls([data])
+    replaceOptimistic(tempId, data)
+    releaseDelivery(tempId)
+    scrollToBottom()
+  } catch (error) {
+    patchOptimistic(tempId, { uploading: false, sendFailed: true, uploadProgress: 0 })
+    showError(error?.message || 'Failed to send message. Tap to retry.')
+  } finally {
+    outgoing.value = false
+  }
+}
+
 const handleSendMessage = async () => {
-  if (!canSendCurrentMessage.value || sending.value) return
+  if (!canSendCurrentMessage.value || sending.value || outgoing.value) return
 
   const body = newMessage.value.trim()
-  if (!body) return
+  const photos = pendingPhotos.value.slice()
+  if (!body && !photos.length) return
 
   const tempId = `temp-${nextTempId++}-${Date.now()}`
+  const replyTo = replyingTo.value?.id || null
+  deliveries.set(tempId, {
+    body,
+    photos,
+    replyTo,
+    uploaded: []
+  })
   addOptimisticMessage({
     tempId,
     thread: 'ops',
     sender_role: senderRole.value,
     sender_id: user.value.id,
     body,
+    attachments: optimisticAttachments(photos),
+    reply_to: replyTo,
     created_at: new Date().toISOString(),
-    sendFailed: false
+    sendFailed: false,
+    uploading: photos.length > 0,
+    uploadProgress: 0
   })
+
+  pendingPhotos.value = []
   newMessage.value = ''
+  replyingTo.value = null
   if (messageInput.value) messageInput.value.style.height = 'auto'
   isNearBottom.value = true
   scrollToBottom(true, true)
   nextTick(() => messageInput.value?.focus())
-
-  const { data, error } = await sendMessage({
-    thread: 'ops',
-    sender_role: senderRole.value,
-    sender_id: user.value.id,
-    body
-  })
-
-  if (error || !data) {
-    markOptimisticFailed(tempId)
-    showError('Failed to send message. Tap to retry.')
-  } else {
-    replaceOptimistic(tempId, data)
-    scrollToBottom()
-  }
+  await deliverMessage(tempId)
 }
 
 const retryMessage = async (message) => {
-  if (!message.sendFailed || !message.tempId) return
-  removeOptimistic(message.tempId)
-  newMessage.value = message.body
-  await handleSendMessage()
+  if (!message?.sendFailed || !message.tempId || outgoing.value) return
+  if (!deliveries.has(message.tempId)) {
+    showError('Couldn\'t retry that message. Please send it again.')
+    return
+  }
+  await deliverMessage(message.tempId)
+}
+
+const sameOutgoingMessage = (optimistic, incoming) => {
+  if (!optimistic || optimistic.sender_id !== incoming.sender_id) return false
+  const elapsed = Math.abs(new Date(optimistic.created_at).getTime() - new Date(incoming.created_at).getTime())
+  if (elapsed >= 5000) return false
+  const optimisticPath = imageAttachments(optimistic).find((item) => item.path)?.path
+  const incomingPath = imageAttachments(incoming)[0]?.path
+  if (optimisticPath || incomingPath) return Boolean(optimisticPath && optimisticPath === incomingPath)
+  return optimistic.body === incoming.body
 }
 
 const handleRealtimeInsert = (newMsg) => {
-  const matchingOpt = optimisticMessages.value.find((opt) =>
-    opt.sender_id === newMsg.sender_id &&
-    opt.body === newMsg.body &&
-    Math.abs(new Date(opt.created_at).getTime() - new Date(newMsg.created_at).getTime()) < 5000
-  )
-  if (matchingOpt) removeOptimistic(matchingOpt.tempId)
+  const matchingOpt = optimisticMessages.value.find((opt) => sameOutgoingMessage(opt, newMsg))
+  if (matchingOpt) {
+    releaseDelivery(matchingOpt.tempId)
+    removeOptimistic(matchingOpt.tempId)
+  }
 
   addMessage(newMsg)
+  primePhotoUrls([newMsg])
   const isFromMe = newMsg.sender_id === user.value?.id
   scrollToBottom(true, isFromMe)
 
@@ -606,6 +1119,7 @@ const handleVisibilityChange = async () => {
   if (latestMessage) {
     const { data: newMsgs } = await fetchNewMessages('ops', latestMessage.created_at)
     newMsgs.forEach((msg) => addMessage(msg))
+    await primePhotoUrls(newMsgs)
   }
   markUnreadAgentMessages()
 }
@@ -635,6 +1149,8 @@ onMounted(async () => {
     await nextTick()
     scrollToMessage(String(route.query.message))
   }
+
+  document.addEventListener('keydown', onViewerKeydown)
 })
 
 onUnmounted(() => {
@@ -644,8 +1160,13 @@ onUnmounted(() => {
     authSubscription.value.subscription.unsubscribe()
   }
   document.removeEventListener('visibilitychange', handleVisibilityChange)
+  document.removeEventListener('keydown', onViewerKeydown)
   messagesContainer.value?.removeEventListener('scroll', onMessagesScroll)
   cancelReminderPress()
+  pendingPhotos.value.forEach((photo) => {
+    if (photo.previewUrl) URL.revokeObjectURL(photo.previewUrl)
+  })
+  for (const tempId of deliveries.keys()) releaseDelivery(tempId)
 })
 </script>
 
@@ -657,5 +1178,9 @@ textarea.chat-composer-input:disabled,
 .reminder-field:focus,
 .reminder-field:disabled {
   font-size: 16px !important;
+}
+
+.chat-photo-viewer-img {
+  touch-action: pinch-zoom;
 }
 </style>
