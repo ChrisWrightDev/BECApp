@@ -21,7 +21,15 @@
           aria-haspopup="dialog"
           @click="openMore"
         >
-          <Icon name="mdi:dots-horizontal" class="w-6 h-6" />
+          <span class="relative">
+            <Icon name="mdi:dots-horizontal" class="w-6 h-6" />
+            <span
+              v-if="newInquiryCount > 0"
+              class="badge badge-error badge-xs absolute -top-1 -right-2 min-w-4 px-1"
+            >
+              {{ newInquiryCount > 99 ? '99+' : newInquiryCount }}
+            </span>
+          </span>
           <span class="dock-label">More</span>
         </button>
       </div>
@@ -35,6 +43,30 @@
             <NuxtLink to="/admin/orders" class="flex items-center gap-2 text-base" @click="closeMore">
               <Icon name="mdi:receipt-text-outline" class="w-5 h-5" />
               Orders
+            </NuxtLink>
+          </li>
+          <li>
+            <NuxtLink to="/admin/inquiries" class="flex items-center gap-2 text-base" @click="closeMore">
+              <Icon name="mdi:inbox" class="w-5 h-5" />
+              Inquiries
+              <span
+                v-if="newInquiryCount > 0"
+                class="badge badge-error badge-sm ml-auto"
+              >
+                {{ newInquiryCount > 99 ? '99+' : newInquiryCount }}
+              </span>
+            </NuxtLink>
+          </li>
+          <li>
+            <NuxtLink to="/admin/subscribers" class="flex items-center gap-2 text-base" @click="closeMore">
+              <Icon name="mdi:email-newsletter" class="w-5 h-5" />
+              Subscribers
+            </NuxtLink>
+          </li>
+          <li>
+            <NuxtLink to="/admin/customers" class="flex items-center gap-2 text-base" @click="closeMore">
+              <Icon name="mdi:account-multiple-outline" class="w-5 h-5" />
+              Customers
             </NuxtLink>
           </li>
           <li>
@@ -66,6 +98,7 @@
 
 <script setup>
 const route = useRoute()
+const { newInquiryCount } = useInquiries()
 const moreSheet = ref(null)
 const moreOpen = ref(false)
 
@@ -87,6 +120,9 @@ const isActive = (tab) => {
 const moreActive = computed(() =>
   moreOpen.value ||
   route.path.startsWith('/admin/orders') ||
+  route.path.startsWith('/admin/inquiries') ||
+  route.path.startsWith('/admin/subscribers') ||
+  route.path.startsWith('/admin/customers') ||
   route.path.startsWith('/admin/users') ||
   route.path.startsWith('/admin/tanks')
 )
