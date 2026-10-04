@@ -11,6 +11,15 @@
           <ul tabindex="0" class="menu menu-md dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-64 text-base-content">
             <li><NuxtLink to="/admin" class="flex items-center gap-2" @click="closeMobileMenu"><Icon name="mdi:view-dashboard" class="w-4 h-4" />Dashboard</NuxtLink></li>
             <li><NuxtLink to="/admin/orders" class="flex items-center gap-2" @click="closeMobileMenu"><Icon name="mdi:receipt-text-outline" class="w-4 h-4" />Orders</NuxtLink></li>
+            <li>
+              <NuxtLink to="/admin/inquiries" class="flex items-center gap-2" @click="closeMobileMenu">
+                <Icon name="mdi:inbox" class="w-4 h-4" />
+                Inquiries
+                <span v-if="newInquiryCount > 0" class="badge badge-error badge-xs">{{ newInquiryCount > 99 ? '99+' : newInquiryCount }}</span>
+              </NuxtLink>
+            </li>
+            <li><NuxtLink to="/admin/subscribers" class="flex items-center gap-2" @click="closeMobileMenu"><Icon name="mdi:email-newsletter" class="w-4 h-4" />Subscribers</NuxtLink></li>
+            <li><NuxtLink to="/admin/customers" class="flex items-center gap-2" @click="closeMobileMenu"><Icon name="mdi:account-multiple-outline" class="w-4 h-4" />Customers</NuxtLink></li>
             <li><NuxtLink to="/admin/users" class="flex items-center gap-2" @click="closeMobileMenu"><Icon name="mdi:account-group" class="w-4 h-4" />Users</NuxtLink></li>
             <li><NuxtLink to="/admin/tanks" class="flex items-center gap-2" @click="closeMobileMenu"><Icon name="mdi:water" class="w-4 h-4" />Tanks</NuxtLink></li>
             <li><NuxtLink to="/admin/prices" class="flex items-center gap-2" @click="closeMobileMenu"><Icon name="mdi:currency-usd" class="w-4 h-4" />Prices</NuxtLink></li>
@@ -24,11 +33,28 @@
         </NuxtLink>
       </div>
 
-      <div class="navbar-center hidden lg:flex">
-        <ul class="menu menu-horizontal px-0 space-x-0 menu-md">
+      <div class="navbar-center hidden lg:flex min-w-0 overflow-x-auto">
+        <ul class="menu menu-horizontal px-0 space-x-0 menu-md flex-nowrap">
           <li>
             <NuxtLink to="/admin/orders" class="btn btn-ghost btn-sm flex items-center gap-1 px-2 text-white hover:bg-red-800">
               <Icon name="mdi:receipt-text-outline" class="w-4 h-4" />Orders
+            </NuxtLink>
+          </li>
+          <li>
+            <NuxtLink to="/admin/inquiries" class="btn btn-ghost btn-sm flex items-center gap-1 px-2 text-white hover:bg-red-800">
+              <Icon name="mdi:inbox" class="w-4 h-4" />
+              Inquiries
+              <span v-if="newInquiryCount > 0" class="badge badge-xs bg-white text-red-900 border-0">{{ newInquiryCount > 99 ? '99+' : newInquiryCount }}</span>
+            </NuxtLink>
+          </li>
+          <li>
+            <NuxtLink to="/admin/subscribers" class="btn btn-ghost btn-sm flex items-center gap-1 px-2 text-white hover:bg-red-800">
+              <Icon name="mdi:email-newsletter" class="w-4 h-4" />Subscribers
+            </NuxtLink>
+          </li>
+          <li>
+            <NuxtLink to="/admin/customers" class="btn btn-ghost btn-sm flex items-center gap-1 px-2 text-white hover:bg-red-800">
+              <Icon name="mdi:account-multiple-outline" class="w-4 h-4" />Customers
             </NuxtLink>
           </li>
           <li>
@@ -86,7 +112,12 @@
 
 <script setup>
 const { isDark, toggleTheme } = useTheme()
+const { newInquiryCount, fetchNewInquiryCount } = useInquiries()
 const mobileDropdownTrigger = ref(null)
+
+onMounted(() => {
+  fetchNewInquiryCount().catch(() => {})
+})
 
 const closeMobileMenu = () => {
   mobileDropdownTrigger.value?.blur()
@@ -102,13 +133,33 @@ const closeMobileMenu = () => {
 }
 
 .navbar-start {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   overflow: hidden;
+}
+
+.navbar-center {
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: flex-start;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.navbar-center::-webkit-scrollbar {
+  display: none;
+}
+
+.navbar-center :deep(.menu) {
+  flex-wrap: nowrap;
+}
+
+.navbar-center :deep(.menu > li) {
+  flex-shrink: 0;
 }
 
 .navbar-end {
   flex: 0 0 auto;
-  margin-left: 0.25rem;
+  margin-left: auto;
 }
 
 .btn-ghost:hover {
