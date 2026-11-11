@@ -80,7 +80,7 @@
               class="flex max-w-[92%]"
               :class="[
                 isOwnMessage(message) ? 'flex-row-reverse' : 'flex-row',
-                imageAttachments(message).length ? 'w-full' : ''
+                hasWideMedia(message) ? 'w-full' : ''
               ]"
             >
               <!-- Avatar -->
@@ -99,7 +99,7 @@
                 class="flex min-w-0 max-w-full flex-col"
                 :class="[
                   isOwnMessage(message) ? 'items-end' : 'items-start',
-                  imageAttachments(message).length ? 'flex-1' : ''
+                  hasWideMedia(message) ? 'flex-1' : ''
                 ]"
               >
                 <!-- Sender Name (only for first message in group) -->
@@ -114,7 +114,7 @@
                 <div
                   class="px-4 py-2 rounded-2xl max-w-full break-words select-none"
                   :class="[
-                    imageAttachments(message).length ? 'w-full' : '',
+                    hasWideMedia(message) ? 'w-full' : '',
                     isOwnMessage(message)
                       ? 'bg-primary text-primary-content rounded-br-md'
                       : 'bg-base-200 text-base-content rounded-bl-md',
@@ -148,7 +148,7 @@
                   <div
                     v-if="imageAttachments(message).length"
                     class="-mx-2 flex flex-col gap-1"
-                    :class="message.body ? 'mb-1' : ''"
+                    :class="message.body || videoAttachments(message).length ? 'mb-1' : ''"
                   >
                     <button
                       v-for="(attachment, attachmentIndex) in imageAttachments(message)"
@@ -174,7 +174,7 @@
                         {{ photoFailed(attachment.path) ? 'Photo unavailable' : 'Loading photo…' }}
                       </span>
                       <span
-                        v-if="message.uploading && attachmentIndex === 0"
+                        v-if="message.uploading && message.uploadTarget !== 'video' && attachmentIndex === 0"
                         class="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/45 px-2 text-xs text-white"
                       >
                         <span>Sending {{ message.uploadProgress || 0 }}%</span>
@@ -185,6 +185,62 @@
                         />
                       </span>
                     </button>
+                  </div>
+
+                  <div
+                    v-if="videoAttachments(message).length"
+                    class="-mx-2 flex flex-col gap-1"
+                    :class="message.body ? 'mb-1' : ''"
+                  >
+                    <div
+                      v-for="(attachment, attachmentIndex) in videoAttachments(message)"
+                      :key="attachment.path || attachment.previewUrl || attachmentIndex"
+                      class="relative block w-full overflow-hidden rounded-xl bg-black"
+                      :style="attachmentAspectStyle(attachment)"
+                      @click.stop
+                      @mousedown.stop
+                      @touchstart.stop
+                      @contextmenu.stop
+                    >
+                      <video
+                        v-if="videoSrc(attachment)"
+                        :src="videoSrc(attachment)"
+                        :poster="videoPoster(attachment) || undefined"
+                        class="chat-video-player absolute inset-0 h-full w-full bg-black object-contain"
+                        :class="message.uploading ? 'pointer-events-none' : ''"
+                        controls
+                        playsinline
+                        webkit-playsinline
+                        preload="metadata"
+                        :autoplay="false"
+                        :muted="false"
+                        aria-label="Video"
+                        @error="onVideoError(attachment)"
+                      />
+                      <img
+                        v-else-if="videoPoster(attachment)"
+                        :src="videoPoster(attachment)"
+                        alt=""
+                        class="absolute inset-0 h-full w-full bg-black object-contain"
+                      >
+                      <span
+                        v-if="!videoSrc(attachment) && (!videoPoster(attachment) || videoFailed(attachment.path))"
+                        class="absolute inset-0 flex items-center justify-center px-2 text-center text-xs text-white"
+                      >
+                        {{ videoFailed(attachment.path) ? 'Video unavailable' : 'Loading video…' }}
+                      </span>
+                      <span
+                        v-if="showVideoProgress(message)"
+                        class="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/45 px-2 text-xs text-white"
+                      >
+                        <span>Sending video {{ message.uploadProgress || 0 }}%</span>
+                        <progress
+                          class="progress progress-primary h-1 w-full"
+                          :value="message.uploadProgress || 0"
+                          max="100"
+                        />
+                      </span>
+                    </div>
                   </div>
 
                   <div v-if="message.body" class="whitespace-pre-wrap">{{ message.body }}</div>
@@ -251,7 +307,7 @@
           </button>
         </div>
 
-        <div v-if="pendingPhotos.length" class="mb-2 flex h-16 gap-2 overflow-x-auto">
+        <div v-if="pendingPhotos.length || pendingVideo" class="mb-2 flex h-16 gap-2 overflow-x-auto">
           <div
             v-for="photo in pendingPhotos"
             :key="photo.id"
@@ -272,14 +328,44 @@
               <Icon name="mdi:close" class="w-3 h-3" />
             </button>
           </div>
+          <div
+            v-if="pendingVideo"
+            class="relative h-16 w-16 shrink-0"
+          >
+            <img
+              v-if="pendingVideo.posterUrl"
+              :src="pendingVideo.posterUrl"
+              alt=""
+              class="h-16 w-16 rounded-lg bg-black object-cover"
+            >
+            <video
+              v-else
+              :src="pendingVideo.previewUrl"
+              class="h-16 w-16 rounded-lg bg-black object-cover"
+              muted
+              playsinline
+              preload="metadata"
+              aria-hidden="true"
+            />
+            <span class="pointer-events-none absolute bottom-0.5 left-0.5 rounded bg-black/70 px-1 text-[10px] leading-4 text-white">Video</span>
+            <button
+              type="button"
+              class="btn btn-circle btn-xs absolute right-0.5 top-0.5 min-h-0 h-5 w-5 border-0 bg-base-100"
+              aria-label="Remove video"
+              :disabled="outgoing"
+              @click="removePendingVideo"
+            >
+              <Icon name="mdi:close" class="w-3 h-3" />
+            </button>
+          </div>
         </div>
 
         <form class="flex items-end gap-2" @submit.prevent>
           <button
             type="button"
             class="btn btn-ghost btn-square shrink-0"
-            aria-label="Add photos"
-            :disabled="preparingPhotos || outgoing || pendingPhotos.length >= MAX_CHAT_PHOTOS"
+            aria-label="Add photo or video"
+            :disabled="preparingPhotos || outgoing || attachmentPickerFull"
             @click="openPhotoPicker"
           >
             <span v-if="preparingPhotos" class="loading loading-spinner loading-sm"></span>
@@ -288,7 +374,7 @@
           <input
             ref="fileInput"
             type="file"
-            accept="image/*"
+            accept="image/*,video/mp4,video/quicktime,video/*,.mp4,.mov"
             multiple
             class="hidden"
             @change="onPhotosSelected"
@@ -421,9 +507,17 @@ import {
   attachmentAspectStyle,
   compressChatImage,
   buildChatPhotoPath,
-  toStoredImageAttachment,
-  isProbablyImageFile
+  toStoredImageAttachment
 } from '~/utils/chatPhotos'
+import {
+  videoAttachments,
+  classifyChatFiles,
+  CHAT_VIDEO_TYPE_ERROR,
+  chatVideoFileInfo,
+  buildChatVideoPath,
+  toStoredVideoAttachment,
+  readChatVideoPreview
+} from '~/utils/chatVideos'
 
 definePageMeta({
   middleware: 'auth',
@@ -459,6 +553,15 @@ const {
   uploadChatPhoto,
   markPhotoFailed
 } = useChatPhotos()
+const {
+  videoUrl,
+  videoFailed,
+  forgetVideoUrl,
+  ensureVideoUrl,
+  primeVideoUrls,
+  uploadChatVideo,
+  markVideoFailed
+} = useChatVideos()
 const { clearUnreadCount } = useUnreadCount()
 const supabase = useSupabaseClient()
 const { showError, showSuccess } = useNotifications()
@@ -481,6 +584,7 @@ let reminderPressTimer = null
 let remindersChannel = null
 const newMessage = ref('')
 const pendingPhotos = ref([])
+const pendingVideo = ref(null)
 const preparingPhotos = ref(false)
 const outgoing = ref(false)
 const replyingTo = ref(null)
@@ -489,6 +593,7 @@ const viewer = ref(null)
 const viewerLoading = ref(false)
 const deliveries = new Map()
 const retriedPhotoPaths = new Set()
+const retriedVideoPaths = new Set()
 let longPressFired = false
 let viewerTouchStartX = 0
 const isLoading = ref(true)
@@ -549,13 +654,27 @@ const canSendCurrentMessage = computed(() => {
   const withinLimit = newMessage.value.length <= 4000
   const hasText = newMessage.value.trim().length > 0
   const hasPhotos = pendingPhotos.value.length > 0
+  const hasVideo = Boolean(pendingVideo.value)
   return canSend.value &&
     !sending.value &&
     !outgoing.value &&
     !preparingPhotos.value &&
     withinLimit &&
-    (hasText || hasPhotos)
+    (hasText || hasPhotos || hasVideo)
 })
+
+const attachmentPickerFull = computed(() => {
+  return pendingPhotos.value.length >= MAX_CHAT_PHOTOS && Boolean(pendingVideo.value)
+})
+
+const hasWideMedia = (message) => {
+  return imageAttachments(message).length > 0 || videoAttachments(message).length > 0
+}
+
+const showVideoProgress = (message) => {
+  if (!message?.uploading || !videoAttachments(message).length) return false
+  return message.uploadTarget === 'video' || !imageAttachments(message).length
+}
 
 const viewerSrc = computed(() => {
   const current = viewer.value
@@ -728,7 +847,7 @@ const loadMessages = async () => {
     loadError.value = error.message || 'Failed to load messages'
     return
   }
-  await primePhotoUrls(messages.value)
+  await primeChatMedia(messages.value)
   await nextTick()
   messagesContainer.value?.removeEventListener('scroll', onMessagesScroll)
   messagesContainer.value?.addEventListener('scroll', onMessagesScroll)
@@ -768,8 +887,30 @@ const replyParent = (message) => {
 
 const replyThumb = (message) => {
   const attachment = imageAttachments(message)[0]
+  if (attachment) return attachment.previewUrl || photoUrl(attachment.path)
+  const video = videoAttachments(message)[0]
+  if (!video) return ''
+  return video.posterUrl || (video.posterPath ? photoUrl(video.posterPath) : '')
+}
+
+const videoSrc = (attachment) => {
   if (!attachment) return ''
-  return attachment.previewUrl || photoUrl(attachment.path)
+  if (attachment.previewUrl) return attachment.previewUrl
+  return videoUrl(attachment.path)
+}
+
+const videoPoster = (attachment) => {
+  if (!attachment) return ''
+  if (attachment.posterUrl) return attachment.posterUrl
+  if (attachment.posterPath) return photoUrl(attachment.posterPath)
+  return ''
+}
+
+const primeChatMedia = async (list) => {
+  await Promise.all([
+    primePhotoUrls(list),
+    primeVideoUrls(list)
+  ])
 }
 
 const attachmentSrc = (attachment) => {
@@ -778,8 +919,8 @@ const attachmentSrc = (attachment) => {
   return photoUrl(attachment.path)
 }
 
-const optimisticAttachments = (photos, stored = []) => {
-  return photos.map((photo, index) => {
+const optimisticAttachments = (photos, stored = [], video = null, storedVideo = null) => {
+  const images = photos.map((photo, index) => {
     const uploaded = stored[index]
     if (uploaded) {
       return { ...uploaded, previewUrl: photo.previewUrl }
@@ -793,6 +934,25 @@ const optimisticAttachments = (photos, stored = []) => {
       mime: 'image/jpeg'
     }
   })
+  if (!video && !storedVideo) return images
+  if (storedVideo) {
+    images.push({
+      ...storedVideo,
+      previewUrl: video?.previewUrl || '',
+      posterUrl: video?.posterUrl || ''
+    })
+  } else if (video) {
+    images.push({
+      type: 'video',
+      previewUrl: video.previewUrl,
+      posterUrl: video.posterUrl || '',
+      width: video.width,
+      height: video.height,
+      size: video.size,
+      mime: video.mime
+    })
+  }
+  return images
 }
 
 const releaseDelivery = (tempId) => {
@@ -801,12 +961,19 @@ const releaseDelivery = (tempId) => {
   payload.photos.forEach((photo) => {
     if (photo.previewUrl) URL.revokeObjectURL(photo.previewUrl)
   })
+  if (payload.video?.previewUrl) URL.revokeObjectURL(payload.video.previewUrl)
+  if (payload.video?.posterUrl) URL.revokeObjectURL(payload.video.posterUrl)
   deliveries.delete(tempId)
 }
 
+const revokeVideoUrls = (video) => {
+  if (!video) return
+  if (video.previewUrl) URL.revokeObjectURL(video.previewUrl)
+  if (video.posterUrl) URL.revokeObjectURL(video.posterUrl)
+}
+
 const openPhotoPicker = () => {
-  if (preparingPhotos.value || outgoing.value) return
-  if (pendingPhotos.value.length >= MAX_CHAT_PHOTOS) return
+  if (preparingPhotos.value || outgoing.value || attachmentPickerFull.value) return
   fileInput.value?.click()
 }
 
@@ -816,28 +983,88 @@ const removePendingPhoto = (id) => {
   pendingPhotos.value = pendingPhotos.value.filter((item) => item.id !== id)
 }
 
+const applyVideoPreview = (id, meta) => {
+  const posterUrl = meta?.posterBlob ? URL.createObjectURL(meta.posterBlob) : ''
+  const merge = (current) => {
+    if (!current || current.id !== id) return null
+    if (posterUrl && current.posterUrl && current.posterUrl !== posterUrl) {
+      URL.revokeObjectURL(current.posterUrl)
+    }
+    return {
+      ...current,
+      width: meta?.width || current.width,
+      height: meta?.height || current.height,
+      posterBlob: meta?.posterBlob || current.posterBlob,
+      posterUrl: posterUrl || current.posterUrl
+    }
+  }
+
+  if (pendingVideo.value?.id === id) {
+    const next = merge(pendingVideo.value)
+    if (next) pendingVideo.value = next
+    return
+  }
+
+  let applied = false
+  for (const [tempId, payload] of deliveries) {
+    if (payload.video?.id !== id || payload.videoUploaded) continue
+    const next = merge(payload.video)
+    if (!next) continue
+    payload.video = next
+    applied = true
+    patchOptimistic(tempId, {
+      attachments: optimisticAttachments(payload.photos, payload.uploaded, payload.video, payload.videoUploaded)
+    })
+  }
+  if (!applied && posterUrl) URL.revokeObjectURL(posterUrl)
+}
+
+const attachPendingVideo = (file) => {
+  const info = chatVideoFileInfo(file)
+  if (!info) {
+    showError(CHAT_VIDEO_TYPE_ERROR, 7000)
+    return
+  }
+  const body = file.type === info.mime ? file : file.slice(0, file.size, info.mime)
+  const pending = {
+    id: crypto.randomUUID(),
+    kind: info.kind,
+    mime: info.mime,
+    size: file.size,
+    width: 16,
+    height: 9,
+    body,
+    previewUrl: URL.createObjectURL(body),
+    posterUrl: '',
+    posterBlob: null
+  }
+  pendingVideo.value = pending
+  readChatVideoPreview(body).then((meta) => applyVideoPreview(pending.id, meta))
+}
+
+const removePendingVideo = () => {
+  if (outgoing.value) return
+  revokeVideoUrls(pendingVideo.value)
+  pendingVideo.value = null
+}
+
 const onPhotosSelected = async (event) => {
   const input = event.target
   const selected = Array.from(input.files || [])
   input.value = ''
   if (!selected.length) return
 
-  const room = MAX_CHAT_PHOTOS - pendingPhotos.value.length
-  if (room <= 0) {
-    showError('You can attach up to 4 photos.')
-    return
-  }
-  if (selected.length > room) {
-    showError('You can attach up to 4 photos.')
-  }
+  const { images, videos, errors } = classifyChatFiles(selected, {
+    pendingPhotoCount: pendingPhotos.value.length,
+    hasPendingVideo: Boolean(pendingVideo.value)
+  })
+  if (errors.length) showError([...new Set(errors)].join(' '), 8000)
+  if (videos[0]) attachPendingVideo(videos[0])
+  if (!images.length) return
 
   preparingPhotos.value = true
   try {
-    for (const file of selected.slice(0, room)) {
-      if (!isProbablyImageFile(file)) {
-        showError('Choose a photo.')
-        continue
-      }
+    for (const file of images) {
       try {
         const compressed = await compressChatImage(file)
         pendingPhotos.value = [
@@ -870,6 +1097,13 @@ const startReply = (message) => {
   if (attachment?.path && !attachment.previewUrl && !photoUrl(attachment.path)) {
     ensurePhotoUrl(attachment.path)
   }
+  const video = videoAttachments(message)[0]
+  if (video?.path && !video.previewUrl && !videoUrl(video.path)) {
+    ensureVideoUrl(video.path)
+  }
+  if (video?.posterPath && !video.posterUrl && !photoUrl(video.posterPath)) {
+    ensurePhotoUrl(video.posterPath)
+  }
   nextTick(() => messageInput.value?.focus())
 }
 
@@ -881,6 +1115,18 @@ const onBubbleClick = (message) => {
 const onPhotoClick = (message, index) => {
   if (longPressFired) return
   openViewer(message, index)
+}
+
+const onVideoError = (attachment) => {
+  if (!attachment?.path || attachment.previewUrl) return
+  if (retriedVideoPaths.has(attachment.path)) {
+    forgetVideoUrl(attachment.path)
+    markVideoFailed(attachment.path)
+    return
+  }
+  retriedVideoPaths.add(attachment.path)
+  forgetVideoUrl(attachment.path)
+  ensureVideoUrl(attachment.path)
 }
 
 const onPhotoError = (attachment) => {
@@ -966,10 +1212,60 @@ const uploadPayloadPhotos = async (tempId, payload) => {
     }))
     payload.uploaded = stored.slice()
     patchOptimistic(tempId, {
+      uploadTarget: 'photos',
       uploadProgress: Math.round(((index + 1) / total) * 100),
-      attachments: optimisticAttachments(payload.photos, stored)
+      attachments: optimisticAttachments(payload.photos, stored, payload.video, payload.videoUploaded)
     })
   }
+  return stored
+}
+
+const uploadPayloadVideo = async (tempId, payload) => {
+  if (!payload.video) return null
+  if (payload.videoUploaded) return payload.videoUploaded
+
+  patchOptimistic(tempId, {
+    uploading: true,
+    uploadTarget: 'video',
+    uploadProgress: 0,
+    attachments: optimisticAttachments(payload.photos, payload.uploaded, payload.video, null)
+  })
+
+  const video = payload.video
+  const path = buildChatVideoPath('ops', new Date(), crypto.randomUUID(), video.kind)
+  await uploadChatVideo({
+    path,
+    body: video.body,
+    contentType: video.mime,
+    onProgress: (percent) => {
+      patchOptimistic(tempId, { uploadProgress: percent, uploading: true, uploadTarget: 'video' })
+    }
+  })
+
+  let posterPath = ''
+  const posterBlob = payload.video.posterBlob
+  if (posterBlob) {
+    try {
+      posterPath = buildChatPhotoPath('ops')
+      await uploadChatPhoto({ path: posterPath, blob: posterBlob })
+    } catch (error) {
+      console.warn('Chat video poster upload failed:', error)
+    }
+  }
+
+  const stored = toStoredVideoAttachment({
+    path,
+    mime: video.mime,
+    width: payload.video.width,
+    height: payload.video.height,
+    size: video.size,
+    posterPath
+  })
+  payload.videoUploaded = stored
+  patchOptimistic(tempId, {
+    uploadProgress: 100,
+    attachments: optimisticAttachments(payload.photos, payload.uploaded, payload.video, stored)
+  })
   return stored
 }
 
@@ -977,17 +1273,22 @@ const deliverMessage = async (tempId) => {
   const payload = deliveries.get(tempId)
   if (!payload || outgoing.value) return
   outgoing.value = true
+  const photosRemaining = payload.photos.length > payload.uploaded.length
+  const videoRemaining = Boolean(payload.video) && !payload.videoUploaded
   patchOptimistic(tempId, {
     sendFailed: false,
-    uploading: payload.photos.length > 0,
-    uploadProgress: payload.uploaded.length && payload.photos.length
+    uploading: photosRemaining || videoRemaining,
+    uploadTarget: photosRemaining ? 'photos' : (videoRemaining ? 'video' : ''),
+    uploadProgress: photosRemaining && payload.photos.length
       ? Math.round((payload.uploaded.length / payload.photos.length) * 100)
       : 0
   })
 
   try {
-    const stored = await uploadPayloadPhotos(tempId, payload)
-    patchOptimistic(tempId, { uploading: false, uploadProgress: 100 })
+    const storedPhotos = await uploadPayloadPhotos(tempId, payload)
+    const storedVideo = await uploadPayloadVideo(tempId, payload)
+    const stored = storedVideo ? [...storedPhotos, storedVideo] : storedPhotos
+    patchOptimistic(tempId, { uploading: false, uploadProgress: 100, uploadTarget: '' })
 
     const messageData = {
       thread: 'ops',
@@ -1003,7 +1304,7 @@ const deliverMessage = async (tempId) => {
       throw error || new Error('Failed to send message')
     }
 
-    await primePhotoUrls([data])
+    await primeChatMedia([data])
     replaceOptimistic(tempId, data)
     releaseDelivery(tempId)
     scrollToBottom()
@@ -1020,15 +1321,18 @@ const handleSendMessage = async () => {
 
   const body = newMessage.value.trim()
   const photos = pendingPhotos.value.slice()
-  if (!body && !photos.length) return
+  const video = pendingVideo.value
+  if (!body && !photos.length && !video) return
 
   const tempId = `temp-${nextTempId++}-${Date.now()}`
   const replyTo = replyingTo.value?.id || null
   deliveries.set(tempId, {
     body,
     photos,
+    video,
     replyTo,
-    uploaded: []
+    uploaded: [],
+    videoUploaded: null
   })
   addOptimisticMessage({
     tempId,
@@ -1036,15 +1340,17 @@ const handleSendMessage = async () => {
     sender_role: senderRole.value,
     sender_id: user.value.id,
     body,
-    attachments: optimisticAttachments(photos),
+    attachments: optimisticAttachments(photos, [], video),
     reply_to: replyTo,
     created_at: new Date().toISOString(),
     sendFailed: false,
-    uploading: photos.length > 0,
+    uploading: photos.length > 0 || Boolean(video),
+    uploadTarget: photos.length > 0 ? 'photos' : 'video',
     uploadProgress: 0
   })
 
   pendingPhotos.value = []
+  pendingVideo.value = null
   newMessage.value = ''
   replyingTo.value = null
   if (messageInput.value) messageInput.value.style.height = 'auto'
@@ -1065,11 +1371,18 @@ const retryMessage = async (message) => {
 
 const sameOutgoingMessage = (optimistic, incoming) => {
   if (!optimistic || optimistic.sender_id !== incoming.sender_id) return false
+  const optimisticImage = imageAttachments(optimistic).find((item) => item.path)?.path || ''
+  const incomingImage = imageAttachments(incoming)[0]?.path || ''
+  if (optimisticImage || incomingImage) {
+    return Boolean(optimisticImage && optimisticImage === incomingImage)
+  }
+  const optimisticVideo = videoAttachments(optimistic).find((item) => item.path)?.path || ''
+  const incomingVideo = videoAttachments(incoming)[0]?.path || ''
+  if (optimisticVideo || incomingVideo) {
+    return Boolean(optimisticVideo && optimisticVideo === incomingVideo)
+  }
   const elapsed = Math.abs(new Date(optimistic.created_at).getTime() - new Date(incoming.created_at).getTime())
   if (elapsed >= 5000) return false
-  const optimisticPath = imageAttachments(optimistic).find((item) => item.path)?.path
-  const incomingPath = imageAttachments(incoming)[0]?.path
-  if (optimisticPath || incomingPath) return Boolean(optimisticPath && optimisticPath === incomingPath)
   return optimistic.body === incoming.body
 }
 
@@ -1081,7 +1394,7 @@ const handleRealtimeInsert = (newMsg) => {
   }
 
   addMessage(newMsg)
-  primePhotoUrls([newMsg])
+  primeChatMedia([newMsg])
   const isFromMe = newMsg.sender_id === user.value?.id
   scrollToBottom(true, isFromMe)
 
@@ -1119,7 +1432,7 @@ const handleVisibilityChange = async () => {
   if (latestMessage) {
     const { data: newMsgs } = await fetchNewMessages('ops', latestMessage.created_at)
     newMsgs.forEach((msg) => addMessage(msg))
-    await primePhotoUrls(newMsgs)
+    await primeChatMedia(newMsgs)
   }
   markUnreadAgentMessages()
 }
@@ -1166,6 +1479,7 @@ onUnmounted(() => {
   pendingPhotos.value.forEach((photo) => {
     if (photo.previewUrl) URL.revokeObjectURL(photo.previewUrl)
   })
+  revokeVideoUrls(pendingVideo.value)
   for (const tempId of deliveries.keys()) releaseDelivery(tempId)
 })
 </script>
