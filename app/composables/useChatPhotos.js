@@ -89,14 +89,22 @@ export const useChatPhotos = () => {
 
   const primePhotoUrls = async (messages) => {
     const paths = []
+    const consider = (path, previewUrl) => {
+      if (!path || previewUrl) return
+      if (readFresh(path)) {
+        publish(path, readFresh(path))
+        return
+      }
+      if (!paths.includes(path)) paths.push(path)
+    }
     for (const message of messages || []) {
       for (const attachment of imageAttachments(message)) {
-        if (!attachment.path || attachment.previewUrl) continue
-        if (readFresh(attachment.path)) {
-          publish(attachment.path, readFresh(attachment.path))
-          continue
-        }
-        if (!paths.includes(attachment.path)) paths.push(attachment.path)
+        consider(attachment.path, attachment.previewUrl)
+      }
+      const list = message?.attachments
+      if (!Array.isArray(list)) continue
+      for (const attachment of list) {
+        if (attachment?.type === 'video') consider(attachment.posterPath, attachment.posterUrl)
       }
     }
     if (!paths.length) return

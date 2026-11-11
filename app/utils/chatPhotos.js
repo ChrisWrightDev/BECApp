@@ -15,6 +15,8 @@ export const MAX_CHAT_PHOTOS = 4
 export const CHAT_PHOTO_MAX_EDGE = 1600
 export const CHAT_PHOTO_JPEG_QUALITY = 0.8
 export const PHOTO_PREVIEW_TEXT = '📷 Photo'
+export const VIDEO_PREVIEW_TEXT = '🎥 Video'
+export const PHOTO_AND_VIDEO_PREVIEW_TEXT = '📷 Photo and video'
 export const CHAT_PHOTO_READ_ERROR = 'Couldn\'t open that photo. If it\'s a HEIC picture, try choosing it again from your library or pick a JPEG.'
 
 const IMAGE_EXTENSION = /\.(jpe?g|png|webp|heic|heif|gif|bmp|avif)$/i
@@ -39,6 +41,12 @@ export function messageHasImage(message) {
   return imageAttachments(message).length > 0
 }
 
+function messageHasVideoAttachment(message) {
+  const list = message?.attachments
+  if (!Array.isArray(list)) return false
+  return list.some((item) => item && item.type === 'video' && (item.path || item.previewUrl))
+}
+
 /**
  * One-line preview for reminders and any last-message text.
  * Photo-only messages use "📷 Photo". A caption wins when present.
@@ -46,7 +54,11 @@ export function messageHasImage(message) {
 export function messagePreviewText(message) {
   const body = String(message?.body || '').trim()
   if (body) return body
-  if (messageHasImage(message)) return PHOTO_PREVIEW_TEXT
+  const hasImage = messageHasImage(message)
+  const hasVideo = messageHasVideoAttachment(message)
+  if (hasImage && hasVideo) return PHOTO_AND_VIDEO_PREVIEW_TEXT
+  if (hasVideo) return VIDEO_PREVIEW_TEXT
+  if (hasImage) return PHOTO_PREVIEW_TEXT
   return ''
 }
 
@@ -54,7 +66,11 @@ export function messagePreviewText(message) {
 export function replyPreviewLabel(message) {
   const body = String(message?.body || '').trim()
   if (body) return body
-  if (messageHasImage(message)) return 'Photo'
+  const hasImage = messageHasImage(message)
+  const hasVideo = messageHasVideoAttachment(message)
+  if (hasImage && hasVideo) return 'Photo and video'
+  if (hasVideo) return 'Video'
+  if (hasImage) return 'Photo'
   return 'Message'
 }
 
