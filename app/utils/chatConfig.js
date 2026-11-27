@@ -1,17 +1,19 @@
 // Chat configuration: map user emails to sender roles
-// IMPORTANT: Keep this mapping in sync with the RLS policy in:
-// supabase/migrations/20260928170100_phase1_messaging.sql
+// IMPORTANT: Keep this mapping in sync with the RLS insert policy.
+// The live policy is recreated in:
+// supabase/migrations/20261127170000_layne_ops_chat_sender.sql
 // (search for "case lower(auth.jwt()->>'email')")
 
 export const EMAIL_TO_SENDER_ROLE = {
   'chrismwright@yahoo.com': 'chris',
-  'oceanviews@cox.net': 'mike'
+  'oceanviews@cox.net': 'mike',
+  'laynewright010@gmail.com': 'layne'
 }
 
 /**
  * Get sender role for a given email (case-insensitive)
  * @param {string} email - User's email address
- * @returns {string|null} - Sender role ('mike' or 'chris') or null if not found
+ * @returns {string|null} - Sender role ('mike', 'chris', or 'layne') or null if not found
  */
 export function getSenderRole(email) {
   if (!email) return null
@@ -28,6 +30,7 @@ export function getSenderDisplayName(role) {
   const displayNames = {
     mike: 'Mike',
     chris: 'Chris',
+    layne: 'Layne',
     agent: 'Agent',
     system: 'System'
   }
