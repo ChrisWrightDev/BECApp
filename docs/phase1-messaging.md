@@ -406,7 +406,7 @@ supabase secrets set \
 - [ ] **Anon denied**: Anonymous users cannot read, insert, update, or delete messages
 - [ ] **Insert restrictions**:
   - [ ] Authenticated users can only insert with `sender_id = auth.uid()`
-  - [ ] Authenticated users can only insert with `sender_role` in `('mike', 'chris')`
+  - [ ] Authenticated users can only insert with `sender_role` in `('mike', 'chris', 'layne')`
   - [ ] Authenticated users cannot forge `agent_status`, `read_at`, `agent_processed_at`, or `created_at`
 - [ ] **Update restrictions**:
   - [ ] Authenticated users can only update `read_at` column
@@ -440,12 +440,13 @@ supabase secrets set \
 
 **Server-side validation**: `sender_role` is strictly enforced via RLS policies:
 - The insert policy checks `sender_id = auth.uid()`
-- The insert policy checks `sender_role in ('mike','chris')`
+- The insert policy checks `sender_role in ('mike','chris','layne')`
 - **The insert policy validates sender_role against the user's email**:
   ```sql
   sender_role = case lower(auth.jwt()->>'email')
     when 'chrismwright@yahoo.com' then 'chris'
     when 'oceanviews@cox.net' then 'mike'
+    when 'laynewright010@gmail.com' then 'layne'
     else null
   end
   ```
@@ -453,16 +454,20 @@ supabase secrets set \
 
 **Email-to-role mapping**: The mapping exists in **two places** and must be kept in sync:
 
-1. **Migration** (`supabase/migrations/20260928170100_phase1_messaging.sql`):
-   - RLS policy WITH CHECK clause (server-side validation)
+1. **Migrations**:
+   - Original policy: `supabase/migrations/20260928170100_phase1_messaging.sql`
+   - Current policy (includes Layne): `supabase/migrations/20261127170000_layne_ops_chat_sender.sql`
 
 2. **UI Config** (`app/utils/chatConfig.js`):
    - `EMAIL_TO_SENDER_ROLE` object (client-side UI)
 
 **Current mappings**:
-- `chrismwright@yahoo.com` → `chris`
-- `oceanviews@cox.net` → `mike`
+- `chrismwright@yahoo.com` → `chris` (display name Chris)
+- `oceanviews@cox.net` → `mike` (display name Mike)
+- `laynewright010@gmail.com` → `layne` (display name Layne)
 - Other users can view messages but cannot send (UI disabled, RLS blocks attempts)
+
+Layne's messages do not wake the ops agent. The notify trigger and `messages_set_agent_status_fn` still treat only `mike` and `chris` as agent conversations.
 
 **IMPORTANT**: When adding or changing user mappings, update **both** the migration and `chatConfig.js`.
 
